@@ -13,6 +13,10 @@
 
 <meta name="theme-color" content="#0a0c07">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='88'%3E%E2%98%95%3C/text%3E%3C/svg%3E">
+<!-- единый набор эмодзи: на iOS, Android и Windows иконки выглядят одинаково -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap">
 <title>Кофеиновая империя — idle кликер</title>
 <style>
 /* =====================================================================
@@ -48,7 +52,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif, "Noto Color Emoji";
   font-size: 15px;
   line-height: 1.35;
   overflow-x: hidden;
@@ -627,6 +631,22 @@ h2, h3, p { margin: 0; }
 }
 .float-num.is-crit { color: #fff3a0; font-size: 24px; text-shadow: 0 2px 12px #000, 0 0 26px rgba(255,196,61,.75); }
 .float-num.is-spend { color: #ffb4b4; font-size: 14px; }
+.chapter-splash {
+  position: fixed; inset: 0; z-index: 70; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; padding: 0 24px;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,.72), rgba(0,0,0,.25) 60%, transparent 80%);
+  animation: splashFade 3.2s ease forwards;
+}
+.chapter-splash small { font: 800 12px "Segoe UI", system-ui, sans-serif; letter-spacing: .32em; text-transform: uppercase; color: var(--accent-2, #ffd08a); }
+.chapter-splash b { font: 900 clamp(30px, 7vw, 64px)/1.05 "Segoe UI", system-ui, sans-serif; color: #fff; text-shadow: 0 0 40px rgba(var(--accent-rgb, 200,255,62), .55); animation: splashRise 3.2s cubic-bezier(.2,.8,.2,1) forwards; }
+.chapter-splash span { font: 500 15px/1.4 "Segoe UI", system-ui, sans-serif; color: rgba(255,255,255,.78); max-width: 520px; }
+.chapter-splash::after { content: ""; width: min(320px, 60vw); height: 2px; margin-top: 6px; background: linear-gradient(90deg, transparent, var(--accent, #c8ff3e), transparent); animation: splashLine 3.2s ease forwards; }
+@keyframes splashFade { 0% { opacity: 0; } 12% { opacity: 1; } 78% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes splashRise { 0% { transform: translateY(18px) scale(.96); letter-spacing: .12em; } 30% { transform: none; letter-spacing: .02em; } 100% { transform: translateY(-6px); } }
+@keyframes splashLine { 0% { transform: scaleX(0); } 35% { transform: scaleX(1); } 100% { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { .chapter-splash, .chapter-splash b, .chapter-splash::after { animation-duration: .01s; animation-iteration-count: 1; } }
+.float-num.is-hot { color: #ffd66b; font-size: 19px; text-shadow: 0 2px 10px rgba(0,0,0,.85), 0 0 22px rgba(255,170,60,.6); }
+.float-num.is-combo { color: #fff; font-size: 15px; letter-spacing: .08em; padding: 3px 10px; border-radius: 999px; background: linear-gradient(90deg, #ff7a18, #ffb347); text-shadow: none; box-shadow: 0 6px 22px rgba(255,122,24,.45); animation-duration: 1.2s; }
 @keyframes floatUp {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(.7); }
   18% { opacity: 1; transform: translate(-50%, -60%) scale(1.08); }
@@ -820,6 +840,11 @@ h2, h3, p { margin: 0; }
 }
 @keyframes canFloat { 50% { transform: translateY(-9px) rotate(.6deg); } }
 .boss-can svg { width: 100%; height: 100%; display: block; }
+.boss-can .crk { opacity: 0; transition: opacity .35s ease; }
+.boss-can[data-dmg="1"] .crk1,
+.boss-can[data-dmg="2"] .crk1, .boss-can[data-dmg="2"] .crk2,
+.boss-can[data-dmg="3"] .crk { opacity: 1; }
+.boss-can[data-dmg="3"] svg { filter: saturate(.8) brightness(.92); }
 .boss-can.is-hit { animation: canHit .16s ease; }
 @keyframes canHit {
   0% { transform: scale(.965) rotate(-1.2deg); filter: brightness(1.5); }
@@ -1418,7 +1443,7 @@ h2, h3, p { margin: 0; }
 .boss-can.is-phase2 svg { animation: phasePulse 1.6s ease-in-out infinite; }
 @keyframes phasePulse { 50% { filter: brightness(1.15) saturate(1.25); } }
 
-.boss-weak { position: absolute; inset: 0; pointer-events: none; }
+.boss-weak { position: absolute; inset: 0; pointer-events: none; z-index: 7; }
 .weak-point {
   position: absolute;
   width: 54px; height: 54px;
@@ -2725,20 +2750,20 @@ html { -webkit-text-size-adjust: 100%; }
      prod — зёрен в секунду за штуку, cans — энергетиков в секунду.
      ------------------------------------------------------------------ */
   var BUILDINGS = [
-    { id: 'grinder',   name: 'Кофемолка',              icon: '⚙️', note: 'Ручная мельница. Медленно, зато начало.', baseCost: 15,           growth: 1.15, prod: 0.75,      cans: 0,     stage: 1 },
-    { id: 'espresso',  name: 'Эспрессо-машина',        icon: '☕', note: 'Пар, давление и первый настоящий доход.',  baseCost: 120,          growth: 1.15, prod: 6,         cans: 0,     stage: 1 },
-    { id: 'cart',      name: 'Кофейный фургон',        icon: '🚐', note: 'Кофе там, где ты нужен.',                 baseCost: 450,          growth: 1.15, prod: 17,        cans: 0,     stage: 2 },
-    { id: 'cafe',      name: 'Кофейня на углу',        icon: '🏪', note: 'Очередь до самой улицы.',                  baseCost: 1300,         growth: 1.15, prod: 45,        cans: 0,     stage: 2 },
-    { id: 'roaster',   name: 'Обжарочный цех',         icon: '🔥', note: 'Зёрна обжариваются тоннами.',              baseCost: 14000,        growth: 1.15, prod: 330,       cans: 0,     stage: 2 },
-    { id: 'factory',   name: 'Завод растворимого',     icon: '🏭', note: 'Кофе в каждой кружке страны.',             baseCost: 150000,       growth: 1.15, prod: 2400,      cans: 0,     stage: 3 },
-    { id: 'canning',   name: 'Линия энергетиков',      icon: '🥫', note: 'Первая банка. Дальше — больше.',           baseCost: 1200000,      growth: 1.15, prod: 27000,     cans: 0.15,  stage: 3 },
-    { id: 'syrup',     name: 'Сиропный цех',           icon: '🧪', note: 'Секретная формула бодрости.',              baseCost: 4000000,      growth: 1.15, prod: 80000,     cans: 0.5,   stage: 3 },
-    { id: 'logistics', name: 'Логистический хаб',      icon: '🚚', note: 'Фуры уходят каждые 30 секунд.',            baseCost: 8000000,      growth: 1.15, prod: 225000,    cans: 0.6,   stage: 4 },
-    { id: 'mega',      name: 'Мегафабрика «Кофеин»',   icon: '🏙️', note: 'Город, который работает на кофеине.',      baseCost: 60000000,     growth: 1.15, prod: 1800000,   cans: 3,     stage: 4 },
-    { id: 'rail',      name: 'Кофейная железная дорога', icon: '🚂', note: 'Зёрна едут по рельсам без остановок.',     baseCost: 200000000,    growth: 1.15, prod: 5000000,   cans: 20,    stage: 4 },
-    { id: 'orbital',   name: 'Орбитальный завод',      icon: '🛰️', note: 'Кофеин покидает пределы атмосферы.',       baseCost: 600000000,    growth: 1.15, prod: 9000000,   cans: 12,    stage: 5 },
-    { id: 'design',    name: 'Студия дизайна банок',   icon: '🎨', note: 'Банка должна выглядеть как победа.',       baseCost: 8000000000,   growth: 1.15, prod: 40000000,  cans: 120,   stage: 5 },
-    { id: 'elevator',  name: 'Космический лифт',       icon: '🚀', note: 'Кофеин покидает планету. Совсем.',         baseCost: 80000000000,  growth: 1.15, prod: 250000000, cans: 500,   stage: 5 }
+    { id: 'grinder',   name: 'Кофемолка',              icon: '⚙️', note: 'Ручная мельница. Медленно, зато начало.', baseCost: 15,           growth: 1.15, prod: 0.25,      cans: 0,     stage: 1 },
+    { id: 'espresso',  name: 'Эспрессо-машина',        icon: '☕', note: 'Пар, давление и первый настоящий доход.',  baseCost: 120,          growth: 1.15, prod: 1.71,         cans: 0,     stage: 1 },
+    { id: 'cart',      name: 'Кофейный фургон',        icon: '🚐', note: 'Кофе там, где ты нужен.',                 baseCost: 450,          growth: 1.15, prod: 5.62,        cans: 0,     stage: 2 },
+    { id: 'cafe',      name: 'Кофейня на углу',        icon: '🏪', note: 'Очередь до самой улицы.',                  baseCost: 1300,         growth: 1.15, prod: 13,        cans: 0,     stage: 2 },
+    { id: 'roaster',   name: 'Обжарочный цех',         icon: '🔥', note: 'Зёрна обжариваются тоннами.',              baseCost: 14000,        growth: 1.15, prod: 108,       cans: 0,     stage: 2 },
+    { id: 'factory',   name: 'Завод растворимого',     icon: '🏭', note: 'Кофе в каждой кружке страны.',             baseCost: 150000,       growth: 1.15, prod: 882,      cans: 0,     stage: 3 },
+    { id: 'canning',   name: 'Линия энергетиков',      icon: '🥫', note: 'Первая банка. Дальше — больше.',           baseCost: 1200000,      growth: 1.15, prod: 5450,     cans: 0.15,  stage: 3 },
+    { id: 'syrup',     name: 'Сиропный цех',           icon: '🧪', note: 'Секретная формула бодрости.',              baseCost: 4000000,      growth: 1.15, prod: 14300,     cans: 0.5,   stage: 3 },
+    { id: 'logistics', name: 'Логистический хаб',      icon: '🚚', note: 'Фуры уходят каждые 30 секунд.',            baseCost: 8000000,      growth: 1.15, prod: 22900,    cans: 0.6,   stage: 4 },
+    { id: 'mega',      name: 'Мегафабрика «Кофеин»',   icon: '🏙️', note: 'Город, который работает на кофеине.',      baseCost: 60000000,     growth: 1.15, prod: 133000,   cans: 3,     stage: 4 },
+    { id: 'rail',      name: 'Кофейная железная дорога', icon: '🚂', note: 'Зёрна едут по рельсам без остановок.',     baseCost: 200000000,    growth: 1.15, prod: 357000,   cans: 20,    stage: 4 },
+    { id: 'orbital',   name: 'Орбитальный завод',      icon: '🛰️', note: 'Кофеин покидает пределы атмосферы.',       baseCost: 600000000,    growth: 1.15, prod: 857000,   cans: 12,    stage: 5 },
+    { id: 'design',    name: 'Студия дизайна банок',   icon: '🎨', note: 'Банка должна выглядеть как победа.',       baseCost: 8000000000,   growth: 1.15, prod: 8890000,  cans: 120,   stage: 5 },
+    { id: 'elevator',  name: 'Космический лифт',       icon: '🚀', note: 'Кофеин покидает планету. Совсем.',         baseCost: 80000000000,  growth: 1.15, prod: 69600000, cans: 500,   stage: 5 }
   ];
 
   /* ------------------------------------------------------------------
@@ -2746,10 +2771,10 @@ html { -webkit-text-size-adjust: 100%; }
      ------------------------------------------------------------------ */
   var STAGES = [
     { n: 1, name: 'Утренний ритуал',          need: 0,         blurb: 'Одно зерно — один клик. С чего-то надо начинать.' },
-    { n: 2, name: 'Кофейный стартап',         need: 10000,     blurb: 'Кофейня на углу уже приносит деньги. Пора расширяться.' },
-    { n: 3, name: 'Энергетическая революция', need: 750000,    blurb: 'Варка — для офисов. Банка — для всех остальных.' },
-    { n: 4, name: 'Империя кофеина',          need: 50000000,  blurb: 'Заводы, фуры, мегаполисы. Кофеин повсюду.' },
-    { n: 5, name: 'Война с Ред Буллом',       need: 750000000, blurb: 'Он заметил конкурента. Пора выпить последнюю банку.' }
+    { n: 2, name: 'Кофейный стартап',         need: 20000,     blurb: 'Кофейня на углу уже приносит деньги. Пора расширяться.' },
+    { n: 3, name: 'Энергетическая революция', need: 2000000,    blurb: 'Варка — для офисов. Банка — для всех остальных.' },
+    { n: 4, name: 'Империя кофеина',          need: 300000000,  blurb: 'Заводы, фуры, мегаполисы. Кофеин повсюду.' },
+    { n: 5, name: 'Война с Ред Буллом',       need: 30000000000, blurb: 'Он заметил конкурента. Пора выпить последнюю банку.' }
   ];
 
   /* ------------------------------------------------------------------
@@ -2777,7 +2802,7 @@ html { -webkit-text-size-adjust: 100%; }
         title: 'Кофейный стартап',
         subtitle: 'Глава 2 · Сладкая ленточка',
         place: 'Городской рынок, 9:15',
-        objective: 'Построй кофейню и дойди до 750K зёрен.',
+        objective: 'Построй кофейню и дойди до 2M зёрен.',
         lines: [
           { who: 'Агнесса', icon: '👩‍💼', text: 'Кофе — это не напиток, это ритуал. А ритуал нужно продавать.' },
           { who: 'Бариста', icon: '🧔', text: 'Агнесса умеет превратить кружку в культ. Не спрашивай, как.' },
@@ -2805,7 +2830,7 @@ html { -webkit-text-size-adjust: 100%; }
         title: 'Империя кофеина',
         subtitle: 'Глава 4 · Всё, что движется',
         place: 'Логистический хаб, 22:10',
-        objective: 'Построй мегафабрику и заработай 750M зёрен.',
+        objective: 'Построй мегафабрику и заработай 30B зёрен.',
         lines: [
           { who: 'Рассказчик', icon: '📜', text: 'Фуры, поезда, мегафабрики. Кофеин течёт по стране, как кровь.' },
           { who: 'Ред', icon: '🐂', text: 'Я скупаю твоих поставщиков. Завтра твои зёрна будут стоить дороже золота.' },
@@ -2819,7 +2844,7 @@ html { -webkit-text-size-adjust: 100%; }
         title: 'Война с Ред Буллом',
         subtitle: 'Глава 5 · Последняя банка',
         place: 'Орбитальная верфь, 5:55',
-        objective: 'Накопи 750M и начни новую рецептуру — только она даст силы одолеть Реда.',
+        objective: 'Построй цеха и начни новую рецептуру — только она даст силы одолеть Реда.',
         lines: [
           { who: 'Ред', icon: '🐂', text: 'Ты думал, я буду смотреть, как ты растёшь? Я не напиток. Я эпоха.' },
           { who: 'Бариста', icon: '🧔', text: 'Эпохи заканчиваются. Обычно с банкой в руке.' },
@@ -2861,7 +2886,7 @@ html { -webkit-text-size-adjust: 100%; }
     var stage = currentStage(state);
     var cur = STAGES[stage - 1];
     var next = STAGES[stage];
-    var cap = next ? next.need : Math.max(1500000000, cur.need * 2);
+    var cap = next ? next.need : cur.need * 2;
     var span = cap - cur.need;
     if (span <= 0) return 1;
     return Math.max(0, Math.min(1, (state.totalBeans - cur.need) / span));
@@ -3028,8 +3053,8 @@ html { -webkit-text-size-adjust: 100%; }
      ЭНЕРГЕТИКИ (вторая валюта) и бусты
      ------------------------------------------------------------------ */
   var BOOSTS = [
-    { id: 'prod',  name: 'Двойной заряд', icon: '⚡', desc: '×3 ко всему производству на 45 секунд', cost: 6,  duration: 45 },
-    { id: 'click', name: 'Ударный клик',  icon: '🥊', desc: '×8 к силе клика на 45 секунд',          cost: 10, duration: 45 }
+    { id: 'prod',  name: 'Двойной заряд', icon: '⚡', desc: '×3 ко всему производству на 45 секунд', cost: 6,  cps: 40, duration: 45 },
+    { id: 'click', name: 'Ударный клик',  icon: '🥊', desc: '×8 к силе клика на 45 секунд',          cost: 10, cps: 60, duration: 45 }
   ];
 
   var BOSS = {
@@ -3090,12 +3115,25 @@ html { -webkit-text-size-adjust: 100%; }
       ] }
   ];
 
-  function currentBoss(state) {
-    return BOSSES[Math.min(BOSSES.length - 1, Math.max(0, (state.prestiges || 0) - 1))];
+  /* Бесконечная арена: после пятой рецептуры и победы над Редом боссы идут по кругу. */
+  function endlessArena(state) {
+    return (state.prestiges || 0) >= BOSSES.length && (state.bossWins || 0) >= BOSSES.length;
   }
 
   function bossIndex(state) {
+    if (endlessArena(state)) return state.bossWins % BOSSES.length;
     return Math.min(BOSSES.length - 1, Math.max(0, (state.prestiges || 0) - 1));
+  }
+
+  function currentBoss(state) {
+    return BOSSES[bossIndex(state)];
+  }
+
+  /* Сила удара по ядру: перки, цеха и (на бесконечной арене) ослабление от уровня. */
+  function coreStrikeMult(state) {
+    var m = bossDamageMult(state) * (1 + 0.02 * factoryCount(state));
+    if (endlessArena(state)) m /= 1 + 0.15 * (state.bossWins - BOSSES.length + 1);
+    return m;
   }
 
   var ACHIEVEMENTS = [
@@ -3363,12 +3401,21 @@ html { -webkit-text-size-adjust: 100%; }
     return Math.round(40 * Math.pow(1.6, (state.boosts && state.boosts.night) || 0));
   }
 
+  /* Цена временного буста — не меньше базовой и ~минута/полторы производства энергетиков. */
+  function boostCost(state, id) {
+    var def = null;
+    for (var i = 0; i < BOOSTS.length; i++) if (BOOSTS[i].id === id) def = BOOSTS[i];
+    if (!def) return null;
+    return Math.max(def.cost, Math.round(cansPerSec(state) * def.cps));
+  }
+
   function buyBoost(state, id) {
     var def = null;
     for (var i = 0; i < BOOSTS.length; i++) if (BOOSTS[i].id === id) def = BOOSTS[i];
     if (def) {
-      if (state.cans < def.cost) return false;
-      state.cans -= def.cost;
+      var bc = boostCost(state, id);
+      if (state.cans < bc) return false;
+      state.cans -= bc;
       state.boostTimers[id] = Math.max(state.boostTimers[id] || 0, 0) + def.duration;
       return true;
     }
@@ -3393,7 +3440,12 @@ html { -webkit-text-size-adjust: 100%; }
      ПРЕСТИЖ
      ------------------------------------------------------------------ */
   function prestigeGain(state) {
-    return canPrestige(state) ? 1 : 0;
+    return canPrestige(state) ? 3 + (state.prestiges || 0) : 0;
+  }
+
+  /* Бонусы за победу: растут с номером победы, чтобы бесконечная арена окупала прокачку. */
+  function bossPatents(state) {
+    return 3 + Math.floor((state.bossWins || 0) / 2);
   }
 
   function canPrestige(state) {
@@ -3435,7 +3487,7 @@ html { -webkit-text-size-adjust: 100%; }
     next.bossTutorials = state.bossTutorials;
     next.bossTries = state.bossTries;
     next.bestBossTimeLeft = state.bestBossTimeLeft;
-    next.patents = state.patents;
+    next.patents = state.patents + gain;
     next.perks = state.perks;
     next.prestiges = state.prestiges + 1;
     next.storySeen = state.storySeen;
@@ -3445,7 +3497,7 @@ html { -webkit-text-size-adjust: 100%; }
     next.started = state.started;
     next.muted = state.muted;
     next.beans = startCapital(next);
-    next.lastPrestigeGain = 0;
+    next.lastPrestigeGain = gain;
     return next;
   }
 
@@ -3468,8 +3520,8 @@ html { -webkit-text-size-adjust: 100%; }
     return { beans: gain, cans: cgain };
   }
 
-  function doClick(state) {
-    var v = clickValue(state);
+  function doClick(state, mult) {
+    var v = clickValue(state) * (mult || 1);
     state.beans += v;
     state.totalBeans += v;
     state.lifetimeBeans += v;
@@ -3513,14 +3565,14 @@ html { -webkit-text-size-adjust: 100%; }
   function bossReady(state) {
     return currentStage(state) >= 5 &&
       (state.prestiges || 0) >= 1 && (state.prestiges || 0) <= 5 &&
-      (state.bossWins || 0) < state.prestiges &&
+      ((state.bossWins || 0) < state.prestiges || endlessArena(state)) &&
       (state.buildings.orbital || 0) >= 1 &&
       state.cans >= BOSS.cansCost &&
       factoryCount(state) >= factoryRequired(state);
   }
 
   function bossDefeatedThisLevel(state) {
-    return (state.prestiges || 0) >= 1 && (state.bossWins || 0) >= state.prestiges;
+    return (state.prestiges || 0) >= 1 && (state.bossWins || 0) >= state.prestiges && !endlessArena(state);
   }
 
   /* ------------------------------------------------------------------
@@ -3690,6 +3742,8 @@ html { -webkit-text-size-adjust: 100%; }
     bossDefeatedThisLevel: bossDefeatedThisLevel,
     factoryRequired: factoryRequired,
     bossIndex: bossIndex,
+    endlessArena: endlessArena,
+    coreStrikeMult: coreStrikeMult,
     ACHIEVEMENTS: ACHIEVEMENTS,
     STORY: STORY,
     PERKS: PERKS,
@@ -3730,6 +3784,8 @@ html { -webkit-text-size-adjust: 100%; }
     nightCost: nightCost,
     buyBoost: buyBoost,
     prestigeGain: prestigeGain,
+    bossPatents: bossPatents,
+    boostCost: boostCost,
     canPrestige: canPrestige,
     prestigeState: prestigeState,
     perkCost: perkCost,
@@ -3825,6 +3881,8 @@ html { -webkit-text-size-adjust: 100%; }
     var hover = null;
     var plots = [];
     var beanHit = { x: 0, y: 0, r: 80 };
+    var beanKick = 0;
+    var beanHeat = 0;
     var tokens = [];
     var smoke = [];
     var specials = [];
@@ -4330,7 +4388,7 @@ html { -webkit-text-size-adjust: 100%; }
         ctx.setLineDash([]);
         var ic = project(o.x, o.y, 0.55);
         ctx.globalAlpha = 0.5;
-        ctx.font = '15px "Segoe UI Emoji", sans-serif';
+        ctx.font = '15px "Noto Color Emoji", "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(C.BUILDINGS[o.index].icon, ic.x, ic.y);
         ctx.font = '600 10px "Segoe UI", system-ui, sans-serif';
@@ -4394,6 +4452,29 @@ html { -webkit-text-size-adjust: 100%; }
       plotPulses.push({ id: id, start: performance.now() });
     }
 
+    /* Анимация высоты: первое здание вырастает из земли, докупка — короткий отскок. */
+    var lastCounts = {};
+    var growAnims = {};
+    function growFactor(id, count) {
+      var now = performance.now();
+      var prev = lastCounts[id];
+      lastCounts[id] = count;
+      if (prev !== undefined && count > prev) growAnims[id] = { start: now, first: prev === 0 };
+      var a = growAnims[id];
+      if (!a || reduced) return 1;
+      var dur = a.first ? 750 : 420;
+      var k = (now - a.start) / dur;
+      if (k >= 1) { delete growAnims[id]; return 1; }
+      if (a.first) {
+        // easeOutBack: подрастает с перелётом
+        var c1 = 1.70158, c3 = c1 + 1, q = k - 1;
+        if (k < 0.05) spawnSmoke(BUILD_POS[id].x, BUILD_POS[id].y, 0.1, palCur.accent2);
+        return Math.max(0.04, 1 + c3 * q * q * q + c1 * q * q);
+      }
+      return 1 + 0.14 * Math.sin(Math.PI * k) * (1 - k);
+    }
+    var BUILD_POS = {};
+
     function drawBuilding(o, count, unlocked) {
       var lc = LINE_COLORS[o.index % LINE_COLORS.length];
       var body = mix(mix(lc, [96, 66, 40], 0.45), palCur.accent, 0.08);
@@ -4406,9 +4487,10 @@ html { -webkit-text-size-adjust: 100%; }
       var isTarget = highlightId === o.id;
 
       if (count <= 0) {
+        lastCounts[o.id] = 0;
         var up = project(o.x, o.y, 0.62);
         ctx.globalAlpha = isTarget ? 0.95 : 0.5;
-        ctx.font = '20px "Segoe UI Emoji", sans-serif';
+        ctx.font = '20px "Noto Color Emoji", "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(C.BUILDINGS[o.index].icon, up.x, up.y);
         ctx.globalAlpha = 1;
@@ -4421,6 +4503,8 @@ html { -webkit-text-size-adjust: 100%; }
       var m = BUILDING_MODELS[o.id] || { w: 1, h: 1, roof: 'flat', shape: 'box', windows: 2 };
       var mw = o.w * Math.min(1.15, m.w || 1);
       var mh = h * Math.min(1.4, (m.h || 1) * 0.88);
+      BUILD_POS[o.id] = { x: o.x, y: o.y };
+      mh *= growFactor(o.id, count);
       var roofCol = mix(mix(lc, [70, 45, 25], 0.55), palCur.accent, 0.08);
       var topZ = mh;
 
@@ -4514,7 +4598,7 @@ html { -webkit-text-size-adjust: 100%; }
       ctx.strokeStyle = css(isTarget ? palCur.accent2 : palCur.accent, isTarget ? 0.95 : 0.55);
       ctx.lineWidth = isTarget ? 2 : 1.2;
       ctx.stroke();
-      ctx.font = '16px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+      ctx.font = '16px "Noto Color Emoji", "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
       ctx.textAlign = 'center';
       ctx.fillStyle = '#fff';
       ctx.fillText(C.BUILDINGS[o.index].icon, bp.x, bp.y + 5);
@@ -4700,7 +4784,7 @@ html { -webkit-text-size-adjust: 100%; }
       ctx.strokeStyle = css(palCur.accent, 0.7);
       ctx.lineWidth = 1.3;
       ctx.stroke();
-      ctx.font = '18px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+      ctx.font = '18px "Noto Color Emoji", "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
       ctx.textAlign = 'center';
       ctx.fillStyle = '#fff';
       ctx.fillText(s.icon, p.x, p.y + 6);
@@ -4739,7 +4823,7 @@ html { -webkit-text-size-adjust: 100%; }
         return isFinite(min) && state.beans >= min;
       }
       if (s.id === 'fountain') {
-        var costs = [C.BOOSTS[0].cost, C.BOOSTS[1].cost, C.adCost(state), C.nightCost(state)];
+        var costs = [C.boostCost(state, 'prod'), C.boostCost(state, 'click'), C.adCost(state), C.nightCost(state)];
         return state.cans >= Math.min.apply(null, costs);
       }
       if (s.id === 'monument') {
@@ -4815,7 +4899,7 @@ html { -webkit-text-size-adjust: 100%; }
           ctx.fillRect(cp.x - 6, cp.y - 12, 12, 22);
           ctx.beginPath(); ctx.ellipse(cp.x, cp.y - 12, 6, 2.4, 0, 0, 6.283); ctx.fillStyle = '#d9dee3'; ctx.fill();
           ctx.beginPath(); ctx.ellipse(cp.x, cp.y + 10, 6, 2.4, 0, 0, 6.283); ctx.fill();
-          ctx.font = '9px "Segoe UI Emoji", sans-serif';
+          ctx.font = '9px "Noto Color Emoji", "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
           ctx.fillStyle = 'rgba(255,255,255,0.85)';
           ctx.fillText(['⚡', '🥊', '📺', '🌙'][ci], cp.x, cp.y - 17);
         }
@@ -4883,7 +4967,7 @@ html { -webkit-text-size-adjust: 100%; }
         ctx.fillRect(b0.x - w / 2 + 6, bt.y + 26, w - 12, 40);
         ctx.fillStyle = '#fff'; ctx.font = '900 10px Arial, sans-serif'; ctx.textAlign = 'center';
         ctx.fillText(bossDef.short, b0.x, bt.y + 49);
-        ctx.font = '15px "Segoe UI Emoji", sans-serif';
+        ctx.font = '15px "Noto Color Emoji", "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
         ctx.fillText(bossDef.emblem, b0.x, b0.y - 16);
         ctx.globalAlpha = 1;
         specialBadge(s, s.x, s.y, s.h + 0.9, unlocked ? '' : (state && C.currentStage(state) >= 5 ? 'рецепт' : 'гл. 5'));
@@ -5042,6 +5126,95 @@ html { -webkit-text-size-adjust: 100%; }
       ctx.globalAlpha = 1;
     }
 
+    /* Атмосфера главы поверх сцены: время суток и погода из сюжета. */
+    function drawWeather(t) {
+      if (reduced || !state) return;
+      var st = C.currentStage(state);
+      var i, x, y, k;
+      ctx.save();
+      if (st === 1) {
+        // 6:40, дождь
+        ctx.strokeStyle = 'rgba(190,210,230,.32)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (i = 0; i < 90; i++) {
+          k = (i * 7919) % 1000 / 1000;
+          x = ((i * 137.5 + t * 0.05) % (W + 80)) - 40;
+          y = ((k * H + t * (0.55 + k * 0.35)) % (H + 40)) - 20;
+          ctx.moveTo(x, y); ctx.lineTo(x - 4, y + 13);
+        }
+        ctx.stroke();
+      } else if (st === 2) {
+        // утренний рынок: тёплые лучи и пыльца
+        for (i = 0; i < 4; i++) {
+          var bx = W * (0.1 + i * 0.12) + Math.sin(t * 0.0002 + i) * 20;
+          var beam = ctx.createLinearGradient(bx, 0, bx + W * 0.25, H * 0.8);
+          beam.addColorStop(0, 'rgba(255,214,140,.10)');
+          beam.addColorStop(1, 'rgba(255,214,140,0)');
+          ctx.fillStyle = beam;
+          ctx.beginPath(); ctx.moveTo(bx, 0); ctx.lineTo(bx + 40, 0); ctx.lineTo(bx + W * 0.3, H * 0.8); ctx.lineTo(bx + W * 0.2, H * 0.8); ctx.closePath(); ctx.fill();
+        }
+        ctx.fillStyle = 'rgba(255,230,170,.5)';
+        for (i = 0; i < 24; i++) {
+          x = (i * 211 + Math.sin(t * 0.0005 + i) * 30) % W;
+          y = (i * 89 + t * 0.008) % H;
+          ctx.globalAlpha = 0.25 + 0.25 * Math.sin(t * 0.002 + i);
+          ctx.beginPath(); ctx.arc(x, y, 1.4, 0, 6.283); ctx.fill();
+        }
+      } else if (st === 3) {
+        // 3:00 ночи в цеху: искры поднимаются от линий
+        for (i = 0; i < 40; i++) {
+          k = (i * 4513) % 1000 / 1000;
+          x = (i * 97.3 + Math.sin(t * 0.001 + i) * 12) % W;
+          y = H - ((t * (0.04 + k * 0.05) + k * H) % H);
+          ctx.globalAlpha = 0.5 * (y / H);
+          ctx.fillStyle = i % 3 ? css(palCur.accent) : '#ffffff';
+          ctx.fillRect(x, y, 1.6, 4);
+        }
+      } else if (st === 4) {
+        // 22:10, хаб: туман у горизонта и огни ночного города
+        var fog = ctx.createLinearGradient(0, H * 0.3, 0, H * 0.55);
+        fog.addColorStop(0, 'rgba(120,90,170,0)');
+        fog.addColorStop(0.5, 'rgba(120,90,170,' + (0.08 + 0.03 * Math.sin(t * 0.0007)) + ')');
+        fog.addColorStop(1, 'rgba(120,90,170,0)');
+        ctx.fillStyle = fog;
+        ctx.fillRect(0, H * 0.3, W, H * 0.25);
+        for (i = 0; i < 46; i++) {
+          x = (i * 173.3) % W;
+          y = H * 0.4 - ((i * 37) % 70) - 6;
+          var on = Math.sin(t * 0.0013 + i * 1.7) > 0.2;
+          if (!on) continue;
+          ctx.globalAlpha = 0.65;
+          ctx.fillStyle = i % 2 ? '#ffd66b' : css(palCur.accent2);
+          ctx.fillRect(x, y, 2, 2);
+        }
+      } else if (st >= 5) {
+        // орбита: сияние и падающие звёзды
+        var au = ctx.createLinearGradient(0, H * 0.05, 0, H * 0.35);
+        au.addColorStop(0, 'rgba(255,60,80,0)');
+        au.addColorStop(0.5, 'rgba(255,90,110,' + (0.07 + 0.04 * Math.sin(t * 0.0006)) + ')');
+        au.addColorStop(1, 'rgba(255,60,80,0)');
+        ctx.fillStyle = au;
+        ctx.beginPath();
+        ctx.moveTo(0, H * 0.18);
+        for (x = 0; x <= W; x += 40) ctx.lineTo(x, H * 0.16 + Math.sin(x * 0.01 + t * 0.0008) * 18);
+        ctx.lineTo(W, H * 0.34); ctx.lineTo(0, H * 0.34); ctx.closePath(); ctx.fill();
+        for (i = 0; i < 3; i++) {
+          var cyc = (t * 0.00025 + i * 0.37) % 1;
+          if (cyc > 0.18) continue;
+          var q = cyc / 0.18;
+          x = W * (0.2 + 0.3 * i) + q * 160;
+          y = H * (0.08 + 0.05 * i) + q * 70;
+          var tail = ctx.createLinearGradient(x, y, x - 60, y - 26);
+          tail.addColorStop(0, 'rgba(255,255,255,' + (0.8 * (1 - q)) + ')');
+          tail.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.strokeStyle = tail; ctx.lineWidth = 1.6;
+          ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 60, y - 26); ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+
     function drawPedestal() {
       var c0 = project(0, 0, 0);
       ctx.beginPath();
@@ -5086,8 +5259,9 @@ html { -webkit-text-size-adjust: 100%; }
       ctx.filter = 'none';
 
       // свечение
-      var glow = ctx.createRadialGradient(base.x, base.y + bob, 8, base.x, base.y + bob, 95 * s);
-      glow.addColorStop(0, css(palCur.accent, 0.35));
+      beanHeat = Math.max(0, beanHeat - 0.012);
+      var glow = ctx.createRadialGradient(base.x, base.y + bob, 8, base.x, base.y + bob, 95 * s * (1 + beanHeat * 0.45));
+      glow.addColorStop(0, css(palCur.accent, 0.35 + beanHeat * 0.35));
       glow.addColorStop(1, css(palCur.accent, 0));
       ctx.fillStyle = glow;
       ctx.beginPath();
@@ -5097,7 +5271,10 @@ html { -webkit-text-size-adjust: 100%; }
       ctx.save();
       ctx.translate(base.x, base.y + bob);
       ctx.rotate(-0.16 + (reduced ? 0 : Math.sin(t * 0.0005) * 0.04));
-      ctx.scale(s, s);
+      // squash & stretch от клика
+      var ka = (performance.now() - beanKick) / 260;
+      var sq = (!reduced && ka < 1) ? Math.sin(Math.PI * ka) * (1 - ka) * 0.16 : 0;
+      ctx.scale(s * (1 + sq), s * (1 - sq * 1.1));
 
       // тело зерна
       var bg = ctx.createRadialGradient(-18, -34, 8, 0, 0, 82);
@@ -5284,6 +5461,7 @@ html { -webkit-text-size-adjust: 100%; }
       }
 
       drawBean(t, hover === 'bean');
+      drawWeather(t);
 
       // дым
       for (var si = smoke.length - 1; si >= 0; si--) {
@@ -5375,9 +5553,31 @@ html { -webkit-text-size-adjust: 100%; }
     var dragging = false;
     var dragStart = { x: 0, y: 0 };
     var moved = 0;
+    var touches = {};
+    var pinch = null;
+
+    function touchList() {
+      var out = [];
+      for (var k in touches) if (Object.prototype.hasOwnProperty.call(touches, k)) out.push(touches[k]);
+      return out;
+    }
+
+    function setZoom(z) {
+      zoom = clamp(z, 0.7, 1.7);
+      resize();
+    }
 
     function onDown(ev) {
-      canvas.setPointerCapture && canvas.setPointerCapture(ev.pointerId);
+      try { if (canvas.setPointerCapture) canvas.setPointerCapture(ev.pointerId); } catch (e) {}
+      touches[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
+      var list = touchList();
+      if (list.length === 2) {
+        // второй палец: щипок вместо вращения, клик не срабатывает
+        pinch = { d: Math.hypot(list[0].x - list[1].x, list[0].y - list[1].y) || 1, zoom: zoom };
+        dragging = false;
+        moved = 999;
+        return;
+      }
       dragging = true;
       moved = 0;
       dragStart = { x: ev.clientX, y: ev.clientY };
@@ -5385,6 +5585,15 @@ html { -webkit-text-size-adjust: 100%; }
 
     function onMove(ev) {
       var p = pointerPos(ev);
+      if (touches[ev.pointerId]) touches[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
+      if (pinch) {
+        var list = touchList();
+        if (list.length >= 2) {
+          var d = Math.hypot(list[0].x - list[1].x, list[0].y - list[1].y) || 1;
+          setZoom(pinch.zoom * d / pinch.d);
+        }
+        return;
+      }
       if (dragging) {
         var dx = ev.clientX - dragStart.x;
         var dy = ev.clientY - dragStart.y;
@@ -5402,6 +5611,8 @@ html { -webkit-text-size-adjust: 100%; }
     }
 
     function onUp(ev) {
+      delete touches[ev.pointerId];
+      if (pinch) { if (!touchList().length) pinch = null; dragging = false; return; }
       dragging = false;
       if (moved > 6) return;
       var p = pointerPos(ev);
@@ -5412,7 +5623,9 @@ html { -webkit-text-size-adjust: 100%; }
       else if (hit.type === 'special' && opts.onSpecial) opts.onSpecial(hit.id, hit.sub, ev);
     }
 
-    function onLeave() {
+    function onLeave(ev) {
+      if (ev && ev.pointerId != null) delete touches[ev.pointerId];
+      if (!touchList().length) pinch = null;
       dragging = false;
       hover = null;
       canvas.style.cursor = 'default';
@@ -5421,8 +5634,7 @@ html { -webkit-text-size-adjust: 100%; }
 
     function onWheel(ev) {
       ev.preventDefault();
-      zoom = clamp(zoom + (ev.deltaY < 0 ? 0.06 : -0.06), 0.82, 1.28);
-      resize();
+      setZoom(zoom + (ev.deltaY < 0 ? 0.06 : -0.06));
     }
 
     canvas.addEventListener('pointerdown', onDown);
@@ -5448,6 +5660,7 @@ html { -webkit-text-size-adjust: 100%; }
     return {
       setState: function (s) { state = s; },
       setBuyAmount: function (v) { buyAmount = v; },
+      kickBean: function (heat) { beanKick = performance.now(); beanHeat = Math.max(beanHeat, heat || 0); },
       pulsePlot: pulsePlot,
       setPanelShift: function (v) { panelShiftTarget = -v / 2; },
       getTargets: function () {
@@ -5727,8 +5940,8 @@ html { -webkit-text-size-adjust: 100%; }
       return;
     }
 
-    state.totalBeans = 9.6e8;
-    state.lifetimeBeans = 9.2e9;
+    state.totalBeans = 3.2e10;
+    state.lifetimeBeans = 9.2e10;
     state.beans = 1.1e8;
     state.buildings = {
       grinder: 60, espresso: 48, cart: 40, cafe: 34, roaster: 27, factory: 19,
@@ -5911,6 +6124,7 @@ html { -webkit-text-size-adjust: 100%; }
 
   /* ============================ диорама ============================ */
   function initScene() {
+    try { if (document.fonts) document.fonts.load('16px "Noto Color Emoji"', '☕⚙️🚐🏪🔥🏭🥫🧪🚚🏙️🚂🛰️🎨🚀🧔🏛🏆🐂'); } catch (e) {}
     var canvas = $('diorama');
     if (!canvas || !window.CoffeeScene) return;
     ui.scene = window.CoffeeScene(canvas, {
@@ -5953,7 +6167,7 @@ html { -webkit-text-size-adjust: 100%; }
         else if (hit.sub === 'night') html = '<b>Ночная смена</b> <span>' + C.nightCost(state) + ' 🥫 · +30% энергетиков</span>';
         else {
           var bst = C.BOOSTS.filter(function (b) { return b.id === hit.sub; })[0];
-          if (bst) html = '<b>' + bst.name + '</b> <span>' + bst.cost + ' 🥫 · ' + bst.desc + '</span>';
+          if (bst) html = '<b>' + bst.name + '</b> <span>' + C.fmt(C.boostCost(state, bst.id)) + ' 🥫 · ' + bst.desc + '</span>';
         }
       } else if (hit.id === 'npc') {
         html = '<b>Архив сюжета</b> <span>глава ' + C.currentStage(state) + ' · нажми, чтобы перечитать</span>';
@@ -6280,7 +6494,7 @@ html { -webkit-text-size-adjust: 100%; }
   }
 
   function buyBoost(id) {
-    var cost = id === 'ad' ? C.adCost(state) : id === 'night' ? C.nightCost(state) : (C.BOOSTS.filter(function (b) { return b.id === id; })[0] || {}).cost;
+    var cost = id === 'ad' ? C.adCost(state) : id === 'night' ? C.nightCost(state) : C.boostCost(state, id);
     if (!cost || state.cans < cost) { Sound.error(); return; }
     if (!C.buyBoost(state, id)) { Sound.error(); return; }
     Sound.can();
@@ -6306,9 +6520,9 @@ html { -webkit-text-size-adjust: 100%; }
         disabled = state.cans < cost;
       } else {
         var def = C.BOOSTS.filter(function (b) { return b.id === id; })[0];
-        cost = def.cost;
+        cost = C.boostCost(state, id);
         var left = state.boostTimers[id] || 0;
-        ref.btn.innerHTML = cost + ' 🥫<small>' + (left > 0 ? 'продлить' : 'купить') + '</small>';
+        ref.btn.innerHTML = C.fmt(cost) + ' 🥫<small>' + (left > 0 ? 'продлить' : 'купить') + '</small>';
         setText(ref.timer, left > 0 ? 'активно ' + Math.ceil(left) + ' с' : '');
         disabled = state.cans < cost;
       }
@@ -6356,7 +6570,7 @@ html { -webkit-text-size-adjust: 100%; }
     } else {
       var fNeed = C.factoryRequired(state), fHave = C.factoryCount(state);
       var pMsg;
-      if (state.prestiges >= 5 && C.bossDefeatedThisLevel(state)) pMsg = 'Финальный босс повержен. Империя завершена.';
+      if (C.endlessArena(state)) pMsg = 'Все рецептуры открыты. Бесконечная арена: боссы возвращаются сильнее.';
       else if (fHave < fNeed) pMsg = 'Для рецептуры нужно цехов: ' + fHave + ' / ' + fNeed;
       else if (state.prestiges > 0 && !C.bossDefeatedThisLevel(state)) pMsg = 'Сначала победи босса уровня ' + state.prestiges;
       else pMsg = 'Дойди до главы 5, чтобы открыть престиж';
@@ -6407,6 +6621,7 @@ html { -webkit-text-size-adjust: 100%; }
       '<p>На арене появится босс: <b>' + nextBoss.name + '</b>.</p>' +
       '<p><b>Сбросится:</b> зёрна, линии, апгрейды, энергетики и бусты.</p>' +
       '<p><b>Останется:</b> бонусы за боссов, прокачка, достижения, сюжет и +' + (state.bossWins * 15) + '% к производству.</p>' +
+      '<p>Награда: <b style="color:#ffd47a">+' + C.prestigeGain(state) + ' 📜</b> бонусов на прокачку.</p>' +
       '<p>Стартовый капитал: ' + C.fmt(C.startCapital(state)) + ' зёрен.</p>';
     openModal({
       title: 'Новая рецептура',
@@ -7274,7 +7489,11 @@ html { -webkit-text-size-adjust: 100%; }
     if (!force && now - ui.hudAt < 100) return;
     ui.hudAt = now;
 
-    setText(dom.beans, C.fmt(state.beans));
+    // счётчик «докручивается» до значения, траты показываются сразу
+    if (!(ui.shownBeans >= 0) || state.beans < ui.shownBeans) ui.shownBeans = state.beans;
+    else ui.shownBeans += (state.beans - ui.shownBeans) * 0.35;
+    if (state.beans - ui.shownBeans < Math.max(1, state.beans * 0.002)) ui.shownBeans = state.beans;
+    setText(dom.beans, C.fmt(ui.shownBeans));
     setText(dom.bps, C.fmt(C.prodPerSec(state)) + ' /с');
     setText(dom.cans, C.fmtInt(state.cans));
     setText(dom.cps, '+' + C.fmt(C.cansPerSec(state)) + ' /с');
@@ -7433,12 +7652,23 @@ html { -webkit-text-size-adjust: 100%; }
     setText(dom.pathNote, bossDone ? 'Босс повержен · глав ' + done + ' из 5' : 'Глава ' + stage + ' из 5');
   }
 
+  function chapterSplash(def) {
+    var el = document.createElement('div');
+    el.className = 'chapter-splash';
+    el.setAttribute('role', 'status');
+    el.innerHTML = '<small>Глава ' + def.n + '</small><b></b><span></span>';
+    el.querySelector('b').textContent = def.name;
+    el.querySelector('span').textContent = def.blurb;
+    document.body.appendChild(el);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 3200);
+  }
+
   function checkStageUnlock() {
     var stage = C.currentStage(state);
     if (stage > ui.seenStage) {
       var def = C.STAGES[stage - 1];
       ui.seenStage = stage;
-      toast('Глава ' + def.n + ': ' + def.name, def.blurb);
+      chapterSplash(def);
       Sound.upgrade();
       applyTheme(stage);
       queueStory(stage);
@@ -7449,8 +7679,18 @@ html { -webkit-text-size-adjust: 100%; }
   }
 
   /* ============================ клик ============================ */
+  /* Комбо: частые клики подряд дают до ×1.5 к силе клика. */
+  function clickCombo() {
+    var now = performance.now();
+    ui.combo = now - (ui.lastBeanAt || 0) < 450 ? Math.min(30, (ui.combo || 0) + 1) : 1;
+    ui.lastBeanAt = now;
+    return 1 + Math.min(20, ui.combo - 1) * 0.025;
+  }
+
   function onBeanClick(ev) {
-    var gain = C.doClick(state);
+    var comboMult = clickCombo();
+    var gain = C.doClick(state, comboMult);
+    if (ui.scene) ui.scene.kickBean(Math.min(1, (ui.combo - 1) / 20));
     Sound.click();
     var x = ev && ev.clientX ? ev.clientX : 0;
     var y = ev && ev.clientY ? ev.clientY : 0;
@@ -7459,7 +7699,10 @@ html { -webkit-text-size-adjust: 100%; }
       x = hero.left + hero.width / 2;
       y = hero.top + hero.height * 0.55;
     }
-    spawnFloat(x, y, '+' + C.fmt(gain));
+    spawnFloat(x, y, '+' + C.fmt(gain), ui.combo >= 21 ? 'is-hot' : '');
+    if (ui.combo === 5 || ui.combo === 10 || ui.combo === 15 || ui.combo === 21) {
+      spawnFloat(x, y - 46, 'КОМБО ×' + comboMult.toFixed(2).replace(/0$/, ''), 'is-combo');
+    }
     var accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
     spawnSparks(x, y, accent || '#c8ff3e');
     spawnClickRing(x, y);
@@ -7498,6 +7741,12 @@ html { -webkit-text-size-adjust: 100%; }
       '<text x="150" y="345" text-anchor="middle" font-size="48">' + boss.emblem + '</text>' +
       '<rect x="74" y="34" width="152" height="24" rx="10" fill="#c9d0d6"/>' +
       '<rect x="74" y="424" width="152" height="24" rx="10" fill="#c9d0d6"/>' +
+      // трещины проявляются по мере потери здоровья (data-dmg на кнопке банки)
+      '<g fill="none" stroke-linecap="round" stroke-linejoin="round">' +
+        '<g class="crk crk1"><path d="M96 70 L118 112 L104 138 L126 176" stroke="#120d0a" stroke-width="5"/><path d="M96 70 L118 112 L104 138 L126 176" stroke="#fff" stroke-opacity=".35" stroke-width="1.5"/></g>' +
+        '<g class="crk crk2"><path d="M222 250 L192 276 L204 300 L174 338 L186 360" stroke="#120d0a" stroke-width="5"/><path d="M192 276 L170 268" stroke="#120d0a" stroke-width="3"/><path d="M222 250 L192 276 L204 300 L174 338" stroke="#fff" stroke-opacity=".35" stroke-width="1.5"/></g>' +
+        '<g class="crk crk3"><path d="M80 300 L112 330 L98 362 L132 404 L120 440" stroke="#120d0a" stroke-width="6"/><path d="M112 330 L140 318 L158 336" stroke="#120d0a" stroke-width="4"/><path d="M150 52 L158 90 L146 112" stroke="#120d0a" stroke-width="4"/><path d="M80 300 L112 330 L98 362 L132 404" stroke="#fff" stroke-opacity=".35" stroke-width="1.5"/></g>' +
+      '</g>' +
       '</svg>';
   }
 
@@ -7691,7 +7940,8 @@ html { -webkit-text-size-adjust: 100%; }
     b.spawnIn -= dt;
     if (b.spawnIn <= 0) {
       spawnBossBullet();
-      b.spawnIn = Math.max(0.2, 0.52 - (b.stage - 1) * 0.08);
+      var lvlK = C.endlessArena(state) ? 1 + 0.08 * (state.bossWins - C.BOSSES.length + 1) : 1;
+      b.spawnIn = Math.max(0.16, (0.52 - (b.stage - 1) * 0.08) / lvlK);
     }
     b.invuln = Math.max(0, (b.invuln || 0) - dt);
     var soulR = 0.028;
@@ -7713,7 +7963,8 @@ html { -webkit-text-size-adjust: 100%; }
         setTimeout(function () { dom.bossArena.classList.remove('is-shake'); }, 320);
         Sound.lose();
         if (b.hearts <= 0) { loseBoss(); return; }
-        toast('Попадание!', 'Сердец осталось: ' + b.hearts);
+        bossAttack();
+        toast('Попадание!', 'Сердец осталось: ' + b.hearts + ' · босс утащил часть зёрен');
       }
     }
     b.hitFlash = Math.max(0, (b.hitFlash || 0) - dt);
@@ -7919,7 +8170,7 @@ html { -webkit-text-size-adjust: 100%; }
     b.coreTimer = 0;
     dom.bossCore.hidden = true;
     var crit = Math.random() < (0.2 + (b.critAdd || 0));
-    var dmg = b.maxHp * (0.055 + 0.012 * (b.stage - 1)) * (b.dmgMult || 1) * (b.shield ? 0.2 : 1) * (crit ? 1.8 : 1);
+    var dmg = b.maxHp * (0.045 + 0.01 * (b.stage - 1)) * C.coreStrikeMult(state) * (b.dmgMult || 1) * (b.shield ? 0.2 : 1) * (crit ? 1.8 : 1);
     b.hp = Math.max(0, b.hp - dmg);
     b.damage += dmg;
     b.hits += 1;
@@ -8010,6 +8261,10 @@ html { -webkit-text-size-adjust: 100%; }
       b.regenBlock = Math.max(0, (b.regenBlock || 0) - dt);
       if (b.regenBlock <= 0) b.hp = Math.min(b.maxHp, b.hp + b.maxHp * 0.0035 * dt);
     }
+    b.weakIn -= dt;
+    if (b.weakIn <= 0) { b.weakIn = C.BOSS.weakEvery; spawnWeak(); }
+    updateWeaks(dt);
+
     if (b.stage < b.stages && b.hp <= b.maxHp * (b.stages - b.stage) / b.stages) {
       showStageUpgrade();
       return;
@@ -8081,6 +8336,7 @@ html { -webkit-text-size-adjust: 100%; }
     if (!b) return;
     var pct = Math.max(0, Math.min(1, b.hp / b.maxHp));
     dom.bossHpFill.style.width = (pct * 100) + '%';
+    dom.bossCan.setAttribute('data-dmg', pct > 0.75 ? '0' : pct > 0.5 ? '1' : pct > 0.25 ? '2' : '3');
     setText(dom.bossHpText, C.fmt(b.hp) + ' / ' + C.fmt(b.maxHp));
     setText(dom.bossTimer, Math.max(0, b.time).toFixed(1) + ' сек');
     toggleClass(dom.bossTimer, 'is-low', b.time <= 10);
@@ -8125,11 +8381,11 @@ html { -webkit-text-size-adjust: 100%; }
       btn.textContent = bossNow.id === 'volt' ? '🛡' : '⚡';
       btn.title = 'Уязвимость: бей!';
       var left = 22 + Math.random() * 56;
-      var top = 24 + Math.random() * 40;
+      var top = 14 + Math.random() * 30;
       btn.style.left = left + '%';
       btn.style.top = top + '%';
       var weakMs = C.BOSS.weakWindow * 1000 * (bossNow.id === 'tornado' ? 0.65 : 1);
-      var weak = { el: btn, left: Date.now() + weakMs };
+      var weak = { el: btn, left: weakMs / 1000 };
       on(btn, 'click', function () { hitWeak(weak); });
       dom.bossWeak.appendChild(btn);
       b.weaks.push(weak);
@@ -8141,7 +8397,7 @@ html { -webkit-text-size-adjust: 100%; }
     var b = ui.boss;
     if (!b || !b.running) return;
     if (b.weaks.indexOf(weak) < 0) return;
-    var dmg = b.maxHp * C.BOSS.weakDamage;
+    var dmg = b.maxHp * C.BOSS.weakDamage * C.coreStrikeMult(state);
     b.hp = Math.max(0, b.hp - dmg);
     b.damage += dmg;
     b.time = Math.min(C.bossTimerFor(state), b.time + 2);
@@ -8168,10 +8424,10 @@ html { -webkit-text-size-adjust: 100%; }
   function updateWeaks(dt) {
     var b = ui.boss;
     if (!b) return;
-    var now = Date.now();
     for (var i = b.weaks.length - 1; i >= 0; i--) {
       var w = b.weaks[i];
-      if (now >= w.left) {
+      w.left -= dt;
+      if (w.left <= 0) {
         b.hp = Math.min(b.maxHp, b.hp + b.maxHp * C.BOSS.weakHeal);
         removeWeak(w);
         flashBoss();
@@ -8191,15 +8447,16 @@ html { -webkit-text-size-adjust: 100%; }
     if (!b || !b.running) return;
     b.running = false;
     var boss = C.currentBoss(state);
-    var finalBoss = boss.id === 'redbull';
+    var gained = C.bossPatents(state);
     state.bossWins += 1;
-    state.patents += 2;
+    state.patents += gained;
+    var finalBoss = boss.id === 'redbull' && state.bossWins === C.BOSSES.length;
     state.bestBossTimeLeft = Math.max(state.bestBossTimeLeft || 0, b.time);
     Sound.win();
     checkAch();
     closeBoss();
-    var win = { time: b.time, hits: b.hits, crits: b.crits, damage: b.damage };
-    if (!finalBoss) { showBossCleared(boss); return; }
+    var win = { time: b.time, hits: b.hits, crits: b.crits, damage: b.damage, patents: gained };
+    if (!finalBoss) { showBossCleared(boss, gained); return; }
     state.storySeen.boss = true;
     startDialogue({
       lines: C.STORY.victory,
@@ -8210,13 +8467,13 @@ html { -webkit-text-size-adjust: 100%; }
     });
   }
 
-  function showBossCleared(boss) {
+  function showBossCleared(boss, gained) {
     var next = C.currentBoss(state);
     openModal({
       title: 'Босс повержен',
       body: '<div class="modal-sub">' + boss.name + ' пал</div>' +
         '<h2 style="margin-top:6px">' + boss.name.toUpperCase() + ' ПОВЕРЖЕН</h2>' +
-        '<p>+15% к производству навсегда и +2 бонуса за босса. Сделай новую рецептуру, чтобы выйти на следующего босса.</p>' +
+        '<p>+15% к производству навсегда и <b style="color:#ffd47a">+' + gained + ' 📜</b> бонусов на прокачку. ' + (state.prestiges >= 5 ? 'Арена ждёт следующего уровня.' : 'Сделай новую рецептуру, чтобы выйти на следующего босса.') + '</p>' +
         '<p class="pane-hint">Порядок: Волт → Торнадо → 100 Киловатт → Литр Энергии → Ред Булл.</p>',
       actions: [{ label: 'Дальше', cls: 'btn-primary' }]
     });
@@ -8324,7 +8581,7 @@ html { -webkit-text-size-adjust: 100%; }
         '<div><span>Урона</span><b>' + C.fmt(win.damage) + '</b></div>' +
         '<div><span>Критов</span><b>' + C.fmtInt(win.crits) + '</b></div>' +
       '</div>' +
-      '<p style="margin-top:14px">Все боссы повержены. Бонус за победы: <b style="color:#c8ff3e">+' + (state.bossWins * 15) + '%</b> к производству и +2 бонуса.</p>';
+      '<p style="margin-top:14px">Все боссы повержены. Бонус за победы: <b style="color:#c8ff3e">+' + (state.bossWins * 15) + '%</b> к производству и +' + win.patents + ' 📜 бонусов. Дальше — бесконечная арена: боссы возвращаются сильнее.</p>';
     var actions = [{ label: 'Продолжить', cls: 'btn-primary' }];
     if (C.canPrestige(state)) actions.unshift({ label: 'Новая рецептура', cls: 'btn-ghost', close: false, onClick: prestigeConfirm });
     openModal({ title: '', body: body, actions: actions });
@@ -8584,7 +8841,7 @@ html { -webkit-text-size-adjust: 100%; }
     dom.btnSound.textContent = state.muted ? '🔇' : '🔊';
     if (dom.worldHint) {
       var coarse = ('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0 || window.innerWidth < 700 || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-      setText(dom.worldHint, coarse ? 'Тапни по зерну · тяни камеру' : 'Кликни по зерну · тяни камеру · колесо — зум');
+      setText(dom.worldHint, coarse ? 'Тапни по зерну · тяни — поворот · два пальца — зум' : 'Кликни по зерну · тяни — поворот · колесо — зум');
     }
 
     buildBuildings();
