@@ -338,6 +338,15 @@ h2, h3, p { margin: 0; }
   font-variant-numeric: tabular-nums;
 }
 .boost-chip.is-click { background: rgba(63,123,255,.12); border-color: rgba(63,123,255,.32); color: #b9ccff; }
+.active-boosts.is-floating { position: fixed; top: 74px; left: 50%; transform: translateX(-50%); z-index: 41; display: flex; gap: 6px; pointer-events: none; }
+@media (max-width: 760px) { .active-boosts.is-floating { top: 66px; } }
+/* 1. телефон: HUD помещается в ширину — цеха доступны через ☰ и сцену, у бонусов без подписи */
+@media (max-width: 480px) {
+  #btn-factories { display: none !important; }
+  .hud-patents small { display: none; }
+  .hud-tools { gap: 5px; }
+  .hud-tools .icon-btn { width: 40px; height: 40px; }
+}
 
 /* ------------------------------ босс-кнопка ------------------------------ */
 .boss-cta {
@@ -672,6 +681,8 @@ h2, h3, p { margin: 0; }
 
 /* ------------------------------ тосты ------------------------------ */
 .toasts { position: fixed; right: 18px; top: 78px; z-index: 70; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+/* во время боя уведомления поверх арены, над банкой */
+body:has(#boss:not([hidden])) .toasts { z-index: 90; top: 24%; left: 50%; right: auto; transform: translateX(-50%); align-items: center; width: min(340px, calc(100vw - 24px)); }
 .toast {
   min-width: 220px; max-width: 320px;
   padding: 10px 13px;
@@ -844,6 +855,13 @@ h2, h3, p { margin: 0; }
 }
 @keyframes canFloat { 50% { transform: translateY(-9px) rotate(.6deg); } }
 .boss-can svg { width: 100%; height: 100%; display: block; }
+/* банка по высоте арены: раньше на телефоне вылезала вниз и закрывала сердца */
+.boss-arena > .boss-can { position: absolute; inset: 0; margin: auto; height: 100%; max-height: 460px; width: auto; }
+.boss-core[hidden] { display: block !important; visibility: hidden; }
+@media (max-width: 460px) {
+  .boss-tag { font-size: 9px; letter-spacing: .14em; flex-wrap: nowrap; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .boss-timer { white-space: nowrap; flex: none; }
+}
 .boss-can .crk { opacity: 0; transition: opacity .35s ease; }
 .boss-can[data-dmg="1"] .crk1,
 .boss-can[data-dmg="2"] .crk1, .boss-can[data-dmg="2"] .crk2,
@@ -5304,7 +5322,7 @@ html { -webkit-text-size-adjust: 100%; }
         drawRoof(s.x, s.y, 0.65, 1.55, mix([190, 180, 140], palCur.accent, 0.25));
         if (unlocked && C.PERKS) {
           for (var pi = 0; pi < C.PERKS.length; pi++) {
-            var pa = pi * Math.PI / 3 - Math.PI / 2;
+            var pa = pi * Math.PI * 2 / C.PERKS.length - Math.PI / 2;
             var px = s.x + Math.cos(pa) * 1.05, py = s.y + Math.sin(pa) * 1.05;
             var pp = project(px, py, 1.25 + Math.sin(t * 0.002 + pi) * 0.06);
             ctx.save();
@@ -5629,7 +5647,7 @@ html { -webkit-text-size-adjust: 100%; }
       var s = unit / 52 * (hovered ? 1.05 : 1);
       beanHit.x = base.x;
       beanHit.y = base.y + bob;
-      beanHit.r = 62 * s;
+      beanHit.r = Math.max(34, 62 * s);
 
       // тень
       var sh = project(0, 0, 0.22);
@@ -5929,7 +5947,7 @@ html { -webkit-text-size-adjust: 100%; }
           }
           if (s.id === 'monument' && state && state.prestiges > 0) {
             for (var pi = 0; pi < C.PERKS.length; pi++) {
-              var pa = pi * Math.PI / 3 - Math.PI / 2;
+              var pa = pi * Math.PI * 2 / C.PERKS.length - Math.PI / 2;
               var pp = project(s.x + Math.cos(pa) * 1.05, s.y + Math.sin(pa) * 1.05, 1.25);
               if ((x - pp.x) * (x - pp.x) + (y - pp.y) * (y - pp.y) <= 14 * 14) {
                 return { type: 'special', id: 'monument', sub: C.PERKS[pi].id };
@@ -6089,7 +6107,7 @@ html { -webkit-text-size-adjust: 100%; }
             }
             if (s.id === 'monument' && state && state.prestiges > 0) {
               C.PERKS.forEach(function (perk, pi) {
-                var pa = pi * Math.PI / 3 - Math.PI / 2;
+                var pa = pi * Math.PI * 2 / C.PERKS.length - Math.PI / 2;
                 var pp = project(s.x + Math.cos(pa) * 1.05, s.y + Math.sin(pa) * 1.05, 1.25);
                 arr.push({ type: 'special', id: 'monument', sub: perk.id, x: pp.x, y: pp.y, r: 14 });
               });
@@ -8467,7 +8485,7 @@ html { -webkit-text-size-adjust: 100%; }
         } else if (C.canPrestige(state)) {
           html = '<b>Прокачка</b> <span>бонусы за победы над боссами</span>';
         } else {
-          html = '<b>Престиж</b> <span class="tip-lock">откроется в главе 5</span>';
+          html = '<b>Престиж</b> <span class="tip-lock">' + prestigeBlocker() + '</span>';
         }
       } else if (hit.id === 'boss') {
         if (state.prestiges < 1) {
@@ -8906,6 +8924,33 @@ html { -webkit-text-size-adjust: 100%; }
     saveGame(true);
   }
 
+  /* Кнопки «Купить» в открытом окне следят за зёрнами, а не замирают на момент открытия. */
+  function refreshModalAffordability() {
+    Array.prototype.forEach.call(dom.modalBody.querySelectorAll('.up-buy'), function (btn) {
+      var u = C.UPGRADE_BY_ID[btn.dataset.id];
+      var aff = !!u && state.beans >= u.cost;
+      toggleClass(btn, 'btn-primary', aff); toggleClass(btn, 'btn-ghost', !aff);
+      btn.disabled = !aff;
+    });
+    Array.prototype.forEach.call(dom.modalBody.querySelectorAll('.fac-buy'), function (btn) {
+      var f = C.FACTORY_BY_ID[btn.dataset.id];
+      var aff = !!f && state.beans >= f.cost;
+      toggleClass(btn, 'btn-primary', aff); toggleClass(btn, 'btn-ghost', !aff);
+      btn.disabled = !aff;
+    });
+  }
+
+  /* Почему новая рецептура сейчас недоступна — одна формулировка для подсказок и окон. */
+  function prestigeBlocker() {
+    if (C.canPrestige(state)) return '';
+    if (C.endlessArena(state) || state.prestiges >= 5) return 'все рецептуры открыты';
+    if (C.currentStage(state) < 5) return 'откроется в главе 5';
+    if (state.prestiges > 0 && !C.bossDefeatedThisLevel(state)) return 'сначала победи босса ' + C.currentBoss(state).name;
+    var fNeed = C.factoryRequired(state), fHave = C.factoryCount(state);
+    if (fHave < fNeed) return 'нужно цехов: ' + fHave + ' / ' + fNeed;
+    return 'пока недоступна';
+  }
+
   function prestigeConfirm() {
     if (!C.canPrestige(state)) { Sound.error(); return; }
     var nextLevel = state.prestiges + 1;
@@ -9064,7 +9109,8 @@ html { -webkit-text-size-adjust: 100%; }
     else if (step.target === 'building') t = targets.filter(function (x) { return x.id === 'grinder'; })[0] || targets.filter(function (x) { return x.type === 'building'; })[0];
     else t = targets.filter(function (x) { return x.id === step.target; })[0];
     if (!t || (t.x <= 1 && t.y <= 1)) return { x: window.innerWidth / 2, y: window.innerHeight / 2, size: 110 };
-    return { x: t.x, y: t.y, size: step.target === 'building' ? 96 : 110 };
+    var size = step.target === 'building' ? 96 : 110;
+    return { x: clamp(t.x, size / 2 + 4, window.innerWidth - size / 2 - 4), y: clamp(t.y, size / 2 + 60, window.innerHeight - size / 2 - 80), size: size };
   }
 
   function renderTutorialStep() {
@@ -9084,9 +9130,17 @@ html { -webkit-text-size-adjust: 100%; }
     var card = dom.tutorialCard;
     var cw = Math.min(330, W - 24);
     var ch = card.offsetHeight || 180;
-    var left = pt.x > W * 0.52 ? pt.x - pt.size / 2 - cw - 18 : pt.x + pt.size / 2 + 18;
+    var left, top;
+    if (W < 640) {
+      // узкий экран: карточка по ширине, над целью или под ней, чтобы не закрывать её
+      left = (W - cw) / 2;
+      top = pt.y > H / 2 ? pt.y - pt.size / 2 - ch - 14 : pt.y + pt.size / 2 + 14;
+    } else {
+      left = pt.x > W * 0.52 ? pt.x - pt.size / 2 - cw - 18 : pt.x + pt.size / 2 + 18;
+      top = pt.y - ch / 2;
+    }
     left = Math.max(12, Math.min(W - cw - 12, left));
-    var top = Math.max(12, Math.min(H - ch - 12, pt.y - ch / 2));
+    top = Math.max(12, Math.min(H - ch - 12, top));
     card.style.width = cw + 'px';
     card.style.left = left + 'px';
     card.style.top = top + 'px';
@@ -9136,7 +9190,7 @@ html { -webkit-text-size-adjust: 100%; }
     if (can) actions.unshift({ label: 'Новая рецептура · уровень ' + (state.prestiges + 1), cls: 'btn-primary', close: false, onClick: prestigeConfirm });
     openModal({
       title: 'Прокачка за бонусы боссов',
-      body: '<div class="up-top"><b>📜 ' + patents + ' бонусов</b> · уровень престижа ' + state.prestiges + ' · босс ' + C.currentBoss(state).name + '</div>' +
+      body: '<div class="up-top"><b>📜 ' + patents + ' бонусов</b> · уровень престижа ' + state.prestiges + ' · босс ' + C.currentBoss(state).name + (can ? '' : ' · рецептура: ' + prestigeBlocker()) + '</div>' +
             '<div class="up-list">' + cards + '</div>',
       actions: actions
     });
@@ -9162,7 +9216,7 @@ html { -webkit-text-size-adjust: 100%; }
       return '<div class="up-card">' +
         '<span>' + (u.icon || '🔧') + '</span>' +
         '<div class="up-copy"><b>' + u.name + '</b><small>' + u.desc + ' · ' + C.fmt(u.cost) + '</small></div>' +
-        '<button class="btn ' + (state.beans >= u.cost ? 'btn-primary' : 'btn-ghost') + ' up-buy" data-id="' + u.id + '">Купить</button>' +
+        '<button class="btn ' + (state.beans >= u.cost ? 'btn-primary' : 'btn-ghost') + ' up-buy" data-id="' + u.id + '"' + (state.beans >= u.cost ? '' : ' disabled') + '>Купить</button>' +
       '</div>';
     }).join('') || '<p class="pane-hint">Все доступные улучшения куплены. Новые откроются по прогрессу.</p>';
     openModal({
@@ -9176,6 +9230,7 @@ html { -webkit-text-size-adjust: 100%; }
         if (!C.buyUpgrade(state, btn.dataset.id)) { Sound.error(); return; }
         var bu = C.UPGRADE_BY_ID[btn.dataset.id];
         if (bu && bu.building && ui.scene) ui.scene.flashUpgrade(bu.building);
+        if (bu) toast('Улучшение', bu.name + ' — ' + bu.desc);
         Sound.upgrade();
         updateHud(true);
         updateBuildings();
@@ -9243,7 +9298,7 @@ html { -webkit-text-size-adjust: 100%; }
       '<div class="menu-settings">' +
         '<button class="btn btn-ghost" id="menu-sound">🔊 Звук: ' + (state.muted ? 'выключен' : 'включён') + '</button>' +
         '<button class="btn btn-ghost" id="menu-story">📖 Сюжет: ' + (storySkipOn() ? 'пропускается' : 'показывается') + '</button>' +
-        '<button class="btn btn-ghost" id="menu-gfx">🎨 Графика: ' + (gfxMode() === '3d' ? 'полное 3D' : 'простая') + '</button>' +
+        '<button class="btn btn-ghost" id="menu-gfx">🎨 Графика: ' + (gfxMode() !== '3d' ? 'простая' : (ui.scene && ui.scene.is3d ? 'полное 3D' : '3D (не загрузилось)')) + '</button>' +
         '<button class="btn btn-danger" id="menu-reset">Сбросить прогресс</button>' +
       '</div>' +
       '<p class="menu-ver">Кофеиновая империя · версия 3 · прогресс хранится в браузере</p>';
@@ -9574,10 +9629,10 @@ html { -webkit-text-size-adjust: 100%; }
       i += 1;
       el.textContent = text.slice(0, i);
       if (i % 2 === 0) Sound.voice(who, i);
-      var delay = 50 + Math.random() * 28;
-      if (/[.!?…]/.test(ch)) delay = 320;
-      else if (/[,;:—]/.test(ch)) delay = 200;
-      else if (ch === ' ') delay = 100;
+      var delay = 28 + Math.random() * 16;
+      if (/[.!?…]/.test(ch)) delay = 220;
+      else if (/[,;:—]/.test(ch)) delay = 130;
+      else if (ch === ' ') delay = 55;
       ui.typer = setTimeout(step, delay);
     }
     ui.typer = setTimeout(step, 160);
@@ -9629,7 +9684,9 @@ html { -webkit-text-size-adjust: 100%; }
           close: false,
           onClick: nextDialogueLine
         },
-        { label: 'Пропустить сюжет', cls: 'btn-ghost', close: false, onClick: skipStory }
+        (d.mark || d.beat || d.onDone)
+          ? { label: 'Пропустить сюжет', cls: 'btn-ghost', close: false, onClick: skipStory }
+          : { label: 'Закрыть', cls: 'btn-ghost', close: false, onClick: skipDialogue }
       ]
     });
     startTypewriter(line.text, line.who);
@@ -9694,6 +9751,7 @@ html { -webkit-text-size-adjust: 100%; }
 
   function processStoryQueue() {
     if (ui.storyQueue.length === 0 || ui.modalOpen || ui.tutorialOpen || (ui.boss && ui.boss.running)) return;
+    if (performance.now() < (ui.splashUntil || 0)) return;
     var job = ui.storyQueue.shift();
     if (storySkipOn()) {
       if (typeof job === 'number') state.storySeen[job] = true;
@@ -9798,7 +9856,7 @@ html { -webkit-text-size-adjust: 100%; }
     if (state.beans - ui.shownBeans < Math.max(1, state.beans * 0.002)) ui.shownBeans = state.beans;
     setText(dom.beans, C.fmt(ui.shownBeans));
     setText(dom.bps, C.fmt(C.prodPerSec(state)) + ' /с');
-    setText(dom.cans, C.fmtInt(state.cans));
+    setText(dom.cans, state.cans < 10000 ? C.fmtInt(state.cans) : C.fmt(state.cans));
     setText(dom.cps, '+' + C.fmt(C.cansPerSec(state)) + ' /с');
     setText(dom.hudPatents, C.fmtInt(state.patents));
 
@@ -9885,12 +9943,12 @@ html { -webkit-text-size-adjust: 100%; }
         fill = info.ratio * 100;
       }
     } else {
-      title = 'Босс · ' + C.currentBoss(state).name;
+      title = C.bossDefeatedThisLevel(state) ? 'Новая рецептура' : 'Босс · ' + C.currentBoss(state).name;
       if (C.bossReady(state)) { text = 'Всё готово — вызывай босса'; fill = 100; }
       else {
         var need = [];
         if (state.prestiges < 1) need.push('новая рецептура');
-        else if (C.bossDefeatedThisLevel(state)) need.push(state.prestiges >= 5 ? 'ничего — все боссы повержены' : 'новая рецептура');
+        else if (C.bossDefeatedThisLevel(state)) need.push(prestigeBlocker() || 'новая рецептура');
         else {
           if (C.factoryCount(state) < C.factoryRequired(state)) need.push('цехов ' + C.factoryCount(state) + ' / ' + C.factoryRequired(state));
           if ((state.buildings.orbital || 0) < 1) need.push('орбитальный завод');
@@ -9958,6 +10016,7 @@ html { -webkit-text-size-adjust: 100%; }
   function chapterSplash(def) {
     var el = document.createElement('div');
     el.className = 'chapter-splash';
+    ui.splashUntil = performance.now() + 2700;
     el.setAttribute('role', 'status');
     el.innerHTML = '<small>Глава ' + def.n + '</small><b></b><span></span>';
     el.querySelector('b').textContent = def.name;
@@ -10056,7 +10115,7 @@ html { -webkit-text-size-adjust: 100%; }
   function requestBoss() {
     if (!C.bossReady(state)) { Sound.error(); return; }
     var boss = C.currentBoss(state);
-    if (!state.bossTutorials[boss.id]) {
+    if (!state.bossTutorials[boss.id] && !storySkipOn()) {
       state.bossTutorials[boss.id] = true;
       saveGame(true);
       startDialogue({
@@ -10093,6 +10152,7 @@ html { -webkit-text-size-adjust: 100%; }
       phase: 1, running: true, startedAt: performance.now(), weaks: []
     };
     dom.boss.hidden = false;
+    if (ui.scene && ui.scene.stop) ui.scene.stop();
     dom.bossHpFill.style.width = '100%';
     dom.bossWeak.innerHTML = '';
     dom.bossFloat.innerHTML = '';
@@ -10104,7 +10164,7 @@ html { -webkit-text-size-adjust: 100%; }
     toggleClass(dom.bossCan, 'is-phase2', false);
     toggleClass(dom.bossCan, 'is-enraged', false);
     setText(dom.bossLevel, String(C.bossLevel(state)));
-    setText(dom.bossArmor, boss.mechanic === 'shield' ? 'Щит активен' : '100% урона');
+    setText(dom.bossArmor, boss.mechanic === 'shield' ? 'Щит через 6 с' : '100% урона');
     dom.bossCore.hidden = true;
     dom.bossWeak.innerHTML = '';
     ['volt','tornado','kilowatt','liter','redbull'].forEach(function (bid) { dom.bossArena.classList.remove('is-' + bid); });
@@ -10146,6 +10206,10 @@ html { -webkit-text-size-adjust: 100%; }
     renderBossGame();
   }
 
+  function coarsePointer() {
+    try { return window.matchMedia('(pointer: coarse)').matches; } catch (e) { return false; }
+  }
+
   /* Геометрия поля уклонения: одна на отрисовку, клавиатуру и тач. */
   function bossBox() {
     var cw = dom.bossCanvas.clientWidth || 800;
@@ -10160,6 +10224,7 @@ html { -webkit-text-size-adjust: 100%; }
   function bossPointer(ev) {
     var b = ui.boss;
     if (!b || !b.running || b.mode !== 'dodge') return;
+    if (ev.target && ev.target.closest && ev.target.closest('.weak-point, .boss-core')) return;
     if (ev.pointerType === 'mouse' && !(ev.buttons & 1)) return;
     var rect = dom.bossCanvas.getBoundingClientRect();
     var box = bossBox();
@@ -10353,7 +10418,7 @@ html { -webkit-text-size-adjust: 100%; }
       ctx.fillText('ЯДРО ОТКРЫТО', bx + bw / 2, by + bh / 2 - 8);
       ctx.font = '800 12px "Segoe UI",system-ui,sans-serif';
       ctx.fillStyle = '#fff';
-      ctx.fillText('SPACE — УДАР', bx + bw / 2, by + bh / 2 + 18);
+      ctx.fillText(coarsePointer() ? 'ЖМИ «УДАР ПО ЯДРУ»' : 'SPACE — УДАР', bx + bw / 2, by + bh / 2 + 18);
     }
   }
   function renderBossGame() {
@@ -10482,6 +10547,21 @@ html { -webkit-text-size-adjust: 100%; }
     setTimeout(function () { if (layer.parentNode) layer.parentNode.removeChild(layer); }, 700);
   }
 
+  /* 100 Киловатт: перегрев от ударов по ядру. Шкала полна — разряд по арене: −1 сердце и короткий стан. */
+  function kilowattOverload() {
+    var b = ui.boss;
+    if (!b) return;
+    b.stun = 2;
+    b.heat = 45;
+    b.hearts -= 1;
+    b.invuln = 1.2;
+    dom.bossArena.classList.add('is-shake');
+    setTimeout(function () { dom.bossArena.classList.remove('is-shake'); }, 340);
+    Sound.lose();
+    toast('Перегрев!', 'Арена ударила током: −1 сердце. Пропускай окна ядра, пока шкала не остынет.');
+    if (b.hearts <= 0) { loseBoss(); }
+  }
+
   function coreStrike() {
     var b = ui.boss;
     if (!b || !b.running || !b.coreOpen || b.paused || b.stun > 0) return;
@@ -10489,7 +10569,9 @@ html { -webkit-text-size-adjust: 100%; }
     b.coreTimer = 0;
     dom.bossCore.hidden = true;
     var crit = Math.random() < (0.2 + (b.critAdd || 0));
-    var dmg = b.maxHp * (0.045 + 0.01 * (b.stage - 1)) * C.coreStrikeMult(state) * (b.dmgMult || 1) * (b.shield ? 0.2 : 1) * (crit ? 1.8 : 1);
+    var armor = b.phase === 2 ? C.BOSS.phase2Armor : 1;
+    var dmg = b.maxHp * (0.045 + 0.01 * (b.stage - 1)) * C.coreStrikeMult(state) * (b.dmgMult || 1) * armor * (b.shield ? 0.2 : 1) * (crit ? 1.8 : 1);
+    if (b.shield) setText(dom.bossArmor, '100% урона');
     b.hp = Math.max(0, b.hp - dmg);
     b.damage += dmg;
     b.hits += 1;
@@ -10498,8 +10580,8 @@ html { -webkit-text-size-adjust: 100%; }
     b.shieldIn = 11;
     b.regenBlock = 7;
     if (b.bossId === 'kilowatt') {
-      b.heat = Math.min(120, (b.heat || 0) + 28);
-      if (b.heat >= 100 && !b.stun) { b.stun = 1.8; toast('Перегрев!', 'Ты перегрузил арену. Пережди и не бей.'); }
+      b.heat = Math.min(120, (b.heat || 0) + 42);
+      if (b.heat >= 100 && !b.stun) kilowattOverload();
     }
     bossFloat(dom.bossArena.getBoundingClientRect().width / 2, dom.bossArena.getBoundingClientRect().height * 0.32, '−' + C.fmt(dmg) + (crit ? ' КРИТ!' : ''), crit);
     dom.bossCan.classList.remove('boss-core-hit');
@@ -10572,9 +10654,10 @@ html { -webkit-text-size-adjust: 100%; }
       if (b.shield && b.shieldT <= 0) { b.shield = false; setText(dom.bossArmor, '100% урона'); }
     }
     if (b.bossId === 'kilowatt') {
-      b.heat = Math.max(0, (b.heat || 0) - 30 * dt);
+      b.heat = Math.max(0, (b.heat || 0) - 3.5 * dt);
       b.stun = Math.max(0, (b.stun || 0) - dt);
-      if (b.stun <= 0 && b.heat > 0) setText(dom.bossArmor, 'Перегрев ' + Math.round(b.heat) + '%');
+      setText(dom.bossArmor, b.stun > 0 ? 'Разряд! Ядро закрыто' : 'Перегрев ' + Math.round(b.heat) + '%');
+      if (b.stun > 0 && b.coreOpen) { b.coreOpen = false; b.coreTimer = 0; dom.bossCore.hidden = true; startDodge(); }
     }
     if (b.bossId === 'liter') {
       b.regenBlock = Math.max(0, (b.regenBlock || 0) - dt);
@@ -10777,6 +10860,7 @@ html { -webkit-text-size-adjust: 100%; }
     var win = { time: b.time, hits: b.hits, crits: b.crits, damage: b.damage, patents: gained };
     if (!finalBoss) { showBossCleared(boss, gained); return; }
     state.storySeen.boss = true;
+    if (storySkipOn()) { showVictory(win); return; }
     startDialogue({
       lines: C.STORY.victory,
       place: 'Орбитальная арена',
@@ -10809,6 +10893,7 @@ html { -webkit-text-size-adjust: 100%; }
 
   function closeBoss() {
     dom.boss.hidden = true;
+    if (ui.scene && ui.scene.start) ui.scene.start();
     ui.boss = null;
     dom.bossWeak.innerHTML = '';
     dom.bossFloat.innerHTML = '';
@@ -11027,6 +11112,7 @@ html { -webkit-text-size-adjust: 100%; }
       updateBoosts();
       if (ui.tab === 'prestige') updatePrestige();
       if (ui.tab === 'awards') updateStats();
+      if (ui.modalOpen) refreshModalAffordability();
     }
     if (now - ui.saveAt > 10000) {
       ui.saveAt = now;
@@ -11156,7 +11242,7 @@ html { -webkit-text-size-adjust: 100%; }
       params = new URLSearchParams(location.search);
       if (params.has('nofx')) document.documentElement.classList.add('no-fx');
       var bossSec = parseFloat(params.get('bosssec'));
-      if (devAllowed && bossSec > 0) C.BOSS.timer = bossSec;
+      if (devAllowed && bossSec > 0) { C.BOSS.timer = bossSec; C.BOSSES.forEach(function (bb) { bb.timer = bossSec; }); }
       var weakSec = parseFloat(params.get('weaksec'));
       if (devAllowed && weakSec > 0) C.BOSS.weakEvery = weakSec;
     } catch (e) {}
@@ -11178,6 +11264,7 @@ html { -webkit-text-size-adjust: 100%; }
       var ico = wrap && wrap.querySelector('.hud-ico');
       if (ico && window.CoffeeIcons && window.CoffeeIcons.url(pair[1])) ico.innerHTML = iconImg(pair[1]);
     });
+    if (dom.activeBoosts) { document.body.appendChild(dom.activeBoosts); dom.activeBoosts.classList.add('is-floating'); }
     buildBuildings();
     buildBoosts();
     buildPerks();
