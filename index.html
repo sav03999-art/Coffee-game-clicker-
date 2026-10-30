@@ -2202,6 +2202,7 @@ body.panel-open .hero { right: 0 !important; transition: none; }
 .boss-arena.is-redbull .boss-countdown { border-color: #ff4d4d; box-shadow: 0 0 34px rgba(255,77,77,.55); }
 /* Undertale-бой: сердце и пули */
 .boss-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 6; pointer-events: none; }
+.boss-arena { touch-action: none; }
 .boss-zones, .boss-lanes, .boss-player-dot { display: none !important; }
 .boss-arena.is-shake .boss-canvas { animation: bossShake .3s linear; }
 .click-flash { position: fixed; inset: 0; z-index: 58; pointer-events: none; background: radial-gradient(circle at 50% 60%, rgba(200,255,62,.13), transparent 55%); animation: clickFlash .22s ease-out forwards; }
@@ -2758,7 +2759,7 @@ html { -webkit-text-size-adjust: 100%; }
         title: 'Кофейный стартап',
         subtitle: 'Глава 2 · Сладкая ленточка',
         place: 'Городской рынок, 9:15',
-        objective: 'Построй кофейню и дойди до 150K зёрен.',
+        objective: 'Построй кофейню и дойди до 750K зёрен.',
         lines: [
           { who: 'Агнесса', icon: '👩‍💼', text: 'Кофе — это не напиток, это ритуал. А ритуал нужно продавать.' },
           { who: 'Бариста', icon: '🧔', text: 'Агнесса умеет превратить кружку в культ. Не спрашивай, как.' },
@@ -2786,7 +2787,7 @@ html { -webkit-text-size-adjust: 100%; }
         title: 'Империя кофеина',
         subtitle: 'Глава 4 · Всё, что движется',
         place: 'Логистический хаб, 22:10',
-        objective: 'Построй мегафабрику и заработай 250M зёрен.',
+        objective: 'Построй мегафабрику и заработай 750M зёрен.',
         lines: [
           { who: 'Рассказчик', icon: '📜', text: 'Фуры, поезда, мегафабрики. Кофеин течёт по стране, как кровь.' },
           { who: 'Ред', icon: '🐂', text: 'Я скупаю твоих поставщиков. Завтра твои зёрна будут стоить дороже золота.' },
@@ -3101,9 +3102,9 @@ html { -webkit-text-size-adjust: 100%; }
     { id: 'beans_1m',    name: 'Миллионер',         desc: 'Заработай 1 000 000 зёрен за всё время', check: function (s) { return s.lifetimeBeans >= 1e6; } },
     { id: 'beans_1b',    name: 'Кофейный барон',    desc: 'Заработай 1 000 000 000 зёрен за всё время', check: function (s) { return s.lifetimeBeans >= 1e9; } },
     { id: 'beans_1t',    name: 'Кофеиновый магнат', desc: 'Заработай 1 триллион зёрен за всё время', check: function (s) { return s.lifetimeBeans >= 1e12; } },
-    { id: 'stage3',      name: 'Революция',         desc: 'Дойди до 3-й главы',               check: function (s) { return s.totalBeans >= 150000; } },
-    { id: 'stage5',      name: 'Война',             desc: 'Дойди до 5-й главы',               check: function (s) { return s.totalBeans >= 250000000; } },
-    { id: 'boss',        name: 'Ред Булл повержен', desc: 'Победи финального босса',          check: function (s) { return s.bossWins >= 1; } },
+    { id: 'stage3',      name: 'Революция',         desc: 'Дойди до 3-й главы',               check: function (s) { return s.totalBeans >= STAGES[2].need; } },
+    { id: 'stage5',      name: 'Война',             desc: 'Дойди до 5-й главы',               check: function (s) { return s.totalBeans >= STAGES[4].need; } },
+    { id: 'boss',        name: 'Первая победа',     desc: 'Победи первого босса',          check: function (s) { return s.bossWins >= 1; } },
     { id: 'boss_3',      name: 'Трижды бодр',       desc: 'Победи босса 3 раза',              check: function (s) { return s.bossWins >= 3; } },
     { id: 'boss_5',      name: 'Властелин банки',   desc: 'Победи босса 5 раз',               check: function (s) { return s.bossWins >= 5; } },
     { id: 'boss_fast',   name: 'Быстрый перепил',   desc: 'Оставь 40+ секунд на таймере боя', check: function (s) { return s.bestBossTimeLeft >= 40; } },
@@ -3537,7 +3538,7 @@ html { -webkit-text-size-adjust: 100%; }
     base.clicks = Math.floor(Math.min(MAX_CLICKS, num(data.clicks)));
     base.bossWins = Math.floor(Math.min(1e6, num(data.bossWins)));
     base.bossTries = Math.floor(Math.min(1e6, num(data.bossTries)));
-    base.bestBossTimeLeft = Math.min(BOSS.timer, num(data.bestBossTimeLeft));
+    base.bestBossTimeLeft = Math.min(1000, num(data.bestBossTimeLeft));
     base.patents = Math.floor(Math.min(1e9, num(data.patents)));
     base.prestiges = Math.floor(Math.min(1e6, num(data.prestiges)));
     base.playTime = Math.min(1e9, num(data.playTime));
@@ -5784,12 +5785,18 @@ html { -webkit-text-size-adjust: 100%; }
   function computeOffline() {
     var secs = Math.min(MAX_OFFLINE, Math.max(0, (Date.now() - (state.savedAt || Date.now())) / 1000));
     if (secs < 60) return null;
+    var timers = state.boostTimers;
+    state.boostTimers = { prod: 0, click: 0 };
     var rate = C.prodPerSec(state);
+    var cansRate = C.cansPerSec(state);
+    state.boostTimers = timers;
+    timers.prod = Math.max(0, (timers.prod || 0) - secs);
+    timers.click = Math.max(0, (timers.click || 0) - secs);
     if (rate <= 0) return null;
     var eff = C.offlineEfficiency(state);
     var gain = rate * secs * eff;
     if (gain < 1) return null;
-    var cans = C.cansPerSec(state) * secs * eff;
+    var cans = cansRate * secs * eff;
     state.beans += gain;
     state.totalBeans += gain;
     state.lifetimeBeans += gain;
@@ -5924,7 +5931,7 @@ html { -webkit-text-size-adjust: 100%; }
         html = '<b>' + b.name + '</b> <span>' + C.fmt(C.buildingCost(state, b.id, 1)) + ' зёрен</span>';
       } else {
         var e = C.effects(state);
-        var per = b.prod * (e.build[b.id] || 1) * e.globalMult * C.prodMult(state);
+        var per = b.prod * (e.build[b.id] || 1) * e.globalMult * C.prodMult(state) * (1 + C.factoryBonus(state));
         html = '<b>' + b.name + '</b> ×' + C.fmtInt(count) + ' <span>+' + C.fmt(per * count) + '/с</span>';
       }
     } else if (hit.type === 'special') {
@@ -6107,7 +6114,7 @@ html { -webkit-text-size-adjust: 100%; }
 
   function updateBuildings() {
     var eff = C.effects(state);
-    var gm = eff.globalMult * C.prodMult(state);
+    var gm = eff.globalMult * C.prodMult(state) * (1 + C.factoryBonus(state));
     C.BUILDINGS.forEach(function (b) {
       var ref = rowRefs[b.id];
       if (!ref) return;
@@ -6639,7 +6646,7 @@ html { -webkit-text-size-adjust: 100%; }
     }).join('') || '<p class="pane-hint">Все доступные улучшения куплены. Новые откроются по прогрессу.</p>';
     openModal({
       title: 'Лаборатория улучшений',
-      body: '<div class="up-top">Куплено ' + owned + ' из ' + total + ' · доступно ' + avail.length + ' · закроется ' + locked + '</div>' +
+      body: '<div class="up-top">Куплено ' + owned + ' из ' + total + ' · доступно ' + avail.length + ' · закрыто ' + locked + '</div>' +
             '<div class="up-list">' + cards + '</div>',
       actions: [{ label: 'Закрыть', cls: 'btn-ghost' }]
     });
@@ -6863,7 +6870,7 @@ html { -webkit-text-size-adjust: 100%; }
       var unlocked = C.isBuildingUnlocked(state, b);
       var cnt = state.buildings[b.id] || 0;
       var cost = C.buildingCost(state, b.id, 1);
-      var per = b.prod * (e.build[b.id] || 1) * e.globalMult * C.prodMult(state);
+      var per = b.prod * (e.build[b.id] || 1) * e.globalMult * C.prodMult(state) * (1 + C.factoryBonus(state));
       var status = !unlocked ? ('откроется в главе ' + b.stage) : cnt ? ('×' + C.fmtInt(cnt) + ' · +' + C.fmt(per * cnt) + '/с') : ('не построен · ' + C.fmt(cost));
       return '<div class="plan-factory' + (unlocked ? '' : ' is-locked') + (cnt ? ' is-built' : '') + '">' +
         '<span class="pf-icon">' + b.icon + '</span>' +
@@ -7558,6 +7565,7 @@ html { -webkit-text-size-adjust: 100%; }
     b.mode = 'dodge';
     b.phaseTimer = Math.max(3.6, 5.4 - (b.stage - 1) * 0.45);
     b.bullets = [];
+    b.target = null;
     b.spawnIn = 0.25;
     b.invuln = Math.max(b.invuln || 0, 0.9);
     dom.bossCore.hidden = true;
@@ -7566,12 +7574,35 @@ html { -webkit-text-size-adjust: 100%; }
     renderBossGame();
   }
 
+  /* Геометрия поля уклонения: одна на отрисовку, клавиатуру и тач. */
+  function bossBox() {
+    var cw = dom.bossCanvas.clientWidth || 800;
+    var ch = dom.bossCanvas.clientHeight || 600;
+    var bw = Math.min(660, cw * 0.8);
+    var bh = Math.min(190, Math.max(120, ch * 0.42));
+    var by = Math.max(18, Math.min(ch * 0.57, ch - bh - 6));
+    var pad = 10;
+    return { cw: cw, ch: ch, bx: (cw - bw) / 2, by: by, bw: bw, bh: bh, pad: pad, innerW: bw - pad * 2, innerH: bh - pad * 2 };
+  }
+
+  function bossPointer(ev) {
+    var b = ui.boss;
+    if (!b || !b.running || b.mode !== 'dodge') return;
+    if (ev.pointerType === 'mouse' && !(ev.buttons & 1)) return;
+    var rect = dom.bossCanvas.getBoundingClientRect();
+    var box = bossBox();
+    b.target = {
+      x: clamp((ev.clientX - rect.left - box.bx - box.pad) / box.innerW, 0.03, 0.97),
+      y: clamp((ev.clientY - rect.top - box.by - box.pad) / box.innerH, 0.05, 0.95)
+    };
+  }
+
   function moveSoul(dt) {
     var b = ui.boss;
     if (!b || b.mode !== 'dodge') return;
-    var cw = dom.bossCanvas.clientWidth || 800;
-    var innerW = Math.min(660, cw * 0.8) - 20;
-    var innerH = 190 - 20;
+    var box = bossBox();
+    var innerW = box.innerW;
+    var innerH = box.innerH;
     var pxSpeed = 320;
     var k = b.keys || {};
     var ax = 0, ay = 0;
@@ -7580,10 +7611,19 @@ html { -webkit-text-size-adjust: 100%; }
     if (k.ArrowUp || k.KeyW) ay -= 1;
     if (k.ArrowDown || k.KeyS) ay += 1;
     if (ax || ay) {
+      b.target = null;
       var len = Math.sqrt(ax * ax + ay * ay);
       ax /= len; ay /= len;
       b.soul.x += ax * pxSpeed * dt / innerW;
       b.soul.y += ay * pxSpeed * dt / innerH;
+    } else if (b.target) {
+      var tx = (b.target.x - b.soul.x) * innerW, ty = (b.target.y - b.soul.y) * innerH;
+      var dist = Math.sqrt(tx * tx + ty * ty);
+      var stepPx = Math.min(dist, pxSpeed * 1.25 * dt);
+      if (dist > 0.5) {
+        b.soul.x += tx / dist * stepPx / innerW;
+        b.soul.y += ty / dist * stepPx / innerH;
+      }
     }
     b.soul.x = Math.max(0.03, Math.min(0.97, b.soul.x));
     b.soul.y = Math.max(0.05, Math.min(0.95, b.soul.y));
@@ -7664,13 +7704,10 @@ html { -webkit-text-size-adjust: 100%; }
     if (!b || !dom.bossCanvas) return;
     var ctx = dom.bossCanvas.getContext('2d');
     if (!ctx) return;
-    var cw = dom.bossCanvas.clientWidth || 800;
-    var ch = dom.bossCanvas.clientHeight || 600;
+    var box = bossBox();
+    var cw = box.cw, ch = box.ch;
     ctx.clearRect(0, 0, cw, ch);
-    var bw = Math.min(660, cw * 0.8);
-    var bh = 190;
-    var bx = (cw - bw) / 2;
-    var by = ch * 0.57;
+    var bw = box.bw, bh = box.bh, bx = box.bx, by = box.by;
     ctx.fillStyle = 'rgba(3,4,6,.78)';
     ctx.fillRect(bx, by, bw, bh);
     ctx.strokeStyle = b.mode === 'attack' ? '#ffe66d' : '#f3f0e8';
@@ -8267,15 +8304,10 @@ html { -webkit-text-size-adjust: 100%; }
         '<div><span>Урона</span><b>' + C.fmt(win.damage) + '</b></div>' +
         '<div><span>Критов</span><b>' + C.fmtInt(win.crits) + '</b></div>' +
       '</div>' +
-      '<p style="margin-top:14px">Победа даёт <b style="color:#c8ff3e">+' + (state.bossWins * 15) + '%</b> к производству и +2 бонуса. Сделай новую рецептуру, чтобы выйти на следующего босса.</p>';
-    openModal({
-      title: '',
-      body: body,
-      actions: [
-        { label: 'Новая рецептура', cls: 'btn-ghost', close: false, onClick: prestigeConfirm },
-        { label: 'Продолжить', cls: 'btn-primary' }
-      ]
-    });
+      '<p style="margin-top:14px">Все боссы повержены. Бонус за победы: <b style="color:#c8ff3e">+' + (state.bossWins * 15) + '%</b> к производству и +2 бонуса.</p>';
+    var actions = [{ label: 'Продолжить', cls: 'btn-primary' }];
+    if (C.canPrestige(state)) actions.unshift({ label: 'Новая рецептура', cls: 'btn-ghost', close: false, onClick: prestigeConfirm });
+    openModal({ title: '', body: body, actions: actions });
   }
 
   function showDefeat(b) {
@@ -8409,6 +8441,9 @@ html { -webkit-text-size-adjust: 100%; }
       on(lane, 'click', function () { setBossLane(parseInt(lane.getAttribute('data-lane'), 10)); });
     });
     on(dom.bossCore, 'click', coreStrike);
+    on(dom.bossArena, 'pointerdown', bossPointer);
+    on(dom.bossArena, 'pointermove', bossPointer);
+    on(window, 'blur', function () { if (ui.boss) ui.boss.keys = {}; });
     on(dom.bossFlee, 'click', fleeConfirm);
     on(dom.btnPrestige, 'click', prestigeConfirm);
 
@@ -8467,7 +8502,7 @@ html { -webkit-text-size-adjust: 100%; }
         }
       }
       if (ev.code === 'Space' && !ev.repeat) {
-        if (ui.modalOpen) return;
+        if (ui.modalOpen || ui.mainMenu) return;
         ev.preventDefault();
         onBeanClick(null);
       }
@@ -8667,7 +8702,7 @@ html { -webkit-text-size-adjust: 100%; }
   // подсказки босса без клавиатуры
   if (window.matchMedia('(pointer: coarse)').matches) {
     var lg = document.querySelector('.boss-legend');
-    if (lg && lg.lastChild && lg.lastChild.nodeType === 3) lg.lastChild.textContent = 'двигай сердце по полосам · бей по ядру, когда оно откроется';
+    if (lg && lg.lastChild && lg.lastChild.nodeType === 3) lg.lastChild.textContent = 'веди сердце пальцем · бей по ядру, когда оно откроется';
   }
 })();
 </script>
