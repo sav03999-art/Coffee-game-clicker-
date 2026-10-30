@@ -2441,6 +2441,8 @@ html { -webkit-text-size-adjust: 100%; }
 .s3-target { color: #cfc8b8; }
 .s3-target.is-afford { color: var(--accent-2, #ffd08a); border-color: rgba(var(--accent-rgb, 208, 138, 74), .6); }
 .gfx-3d #diorama { touch-action: none; cursor: grab; }
+.s3-label.is-click { pointer-events: auto; cursor: pointer; }
+.s3-label.is-click:hover .s3-ico { border-color: var(--accent-2, #ffd08a); }
 @media (max-width: 760px) {
   .s3-label { font-size: 9.5px; gap: 2px; }
   .s3-ico { width: 24px; height: 24px; }
@@ -4199,7 +4201,7 @@ html { -webkit-text-size-adjust: 100%; }
         { id: 'fountain', icon: '🥫', x: 12,  y: 0,   h: 0.7, label: 'Бусты' },
         { id: 'npc',      icon: '🧔', x: 0,   y: -12, h: 1.3, label: 'Сюжет' },
         { id: 'monument', icon: '🏛', x: 0,   y: 12,  h: 1.8, label: 'Престиж' },
-        { id: 'works',    icon: '🏭', x: -14, y: 2,   h: 1.4, label: 'Цеха' },
+        { id: 'works',    icon: '🏭', x: -8.5, y: 8.5, h: 1.4, label: 'Цеха' },
         { id: 'boss',     icon: '🐂', x: 0,   y: -16, h: 2.8, label: 'Ред Булл' },
         { id: 'trophy',   icon: '🏆', x: 8.5, y: 8.5, h: 1.2, label: 'Награды' }
       ];
@@ -6194,7 +6196,7 @@ html { -webkit-text-size-adjust: 100%; }
     { id: 'fountain', x: 12,  y: 0,   h: 1.6, label: 'Бусты' },
     { id: 'npc',      x: 0,   y: -12, h: 2.2, label: 'Сюжет' },
     { id: 'monument', x: 0,   y: 12,  h: 3.0, label: 'Престиж' },
-    { id: 'works',    x: -14, y: 2,   h: 2.4, label: 'Цеха' },
+    { id: 'works',    x: -8.5, y: 8.5, h: 2.4, label: 'Цеха' },
     { id: 'boss',     x: 0,   y: -16, h: 4.6, label: 'Босс' },
     { id: 'trophy',   x: 8.5, y: 8.5, h: 2.2, label: 'Награды' }
   ];
@@ -6823,7 +6825,7 @@ html { -webkit-text-size-adjust: 100%; }
           aw.rotation.x = -Math.PI / 3.2;
           // вывеска
           var sign = canvasTex(128, 32, function (cx) { cx.fillStyle = '#2a1a0e'; cx.fillRect(0, 0, 128, 32); cx.fillStyle = '#ffd08a'; cx.font = 'bold 20px sans-serif'; cx.textAlign = 'center'; cx.fillText('CAFÉ', 64, 23); });
-          add(g, new THREE.PlaneGeometry(0.7, 0.18), new THREE.MeshStandardMaterial({ map: sign, emissive: 0xffffff, emissiveMap: sign, emissiveIntensity: 0.6 }), 0, 1.0, 0.465, false);
+          add(g, new THREE.PlaneGeometry(0.7, 0.18), new THREE.MeshStandardMaterial({ map: sign, emissive: 0xffffff, emissiveMap: sign, emissiveIntensity: 0.6 }), 0, 1.0, 0.49, false);
           // столики на улице
           [[-0.55, 0.85], [0.55, 0.85]].forEach(function (p) {
             cyl(g, 0.02, 0.02, 0.75, M.darkMetal, p[0], 0, p[1], 6);
@@ -7275,6 +7277,13 @@ html { -webkit-text-size-adjust: 100%; }
       var SP = {};
       specials.forEach(function (sp) { SP[sp.def.id] = sp; });
 
+      // корни для выбора по геометрии: у каждого — описание цели клика
+      var pickRoots = [];
+      plots.forEach(function (o) { o.root.userData.hit = { type: 'building', id: o.id }; pickRoots.push(o.root); });
+      specials.forEach(function (sp) { sp.group.userData.hit = { type: 'special', id: sp.def.id }; pickRoots.push(sp.group); });
+      bean.userData.hit = { type: 'bean' };
+      pickRoots.push(bean);
+
       var beanProxy = new THREE.Mesh(new THREE.SphereGeometry(1.5, 12, 8), proxyMat);
       beanProxy.position.copy(bean.position);
       beanProxy.userData.hit = { type: 'bean' };
@@ -7362,10 +7371,23 @@ html { -webkit-text-size-adjust: 100%; }
       host.insertBefore(layer, canvas.nextSibling);
       function label(cls) { var el = document.createElement('div'); el.className = 's3-label ' + (cls || ''); layer.appendChild(el); return el; }
       var icon = function (id) { var u = global.CoffeeIcons ? global.CoffeeIcons.url(id) : ''; return u ? '<img src="' + u + '" alt="">' : ''; };
-      plots.forEach(function (o) { o.label = label('s3-plot'); o.sig = ''; });
-      specials.forEach(function (sp) { sp.label = label('s3-special'); sp.sig = ''; });
+      /* Подписи кликабельны: если здание закрыто соседним, по его значку всё равно можно попасть. */
+      function clickable(el, fire) {
+        el.classList.add('is-click');
+        el.addEventListener('click', function (ev) { ev.stopPropagation(); fire(ev); });
+      }
+      plots.forEach(function (o) {
+        o.label = label('s3-plot'); o.sig = '';
+        clickable(o.label, function (ev) { if (opts.onBuilding) opts.onBuilding(o.id, ev); });
+      });
+      specials.forEach(function (sp) {
+        sp.label = label('s3-special'); sp.sig = '';
+        clickable(sp.label, function (ev) { if (opts.onSpecial) opts.onSpecial(sp.def.id, null, ev); });
+      });
       var beanLabel = label('s3-bean');
+      clickable(beanLabel, function (ev) { if (opts.onBean) opts.onBean(ev); });
       var targetLabel = label('s3-target');
+      clickable(targetLabel, function (ev) { if (hiId && opts.onBuilding) opts.onBuilding(hiId, ev); });
       var tmpV = new THREE.Vector3();
       function toScreen(x, y, z) {
         tmpV.set(x, y, z).project(camera);
@@ -7374,7 +7396,8 @@ html { -webkit-text-size-adjust: 100%; }
       function place(el, p, show) {
         if (!show || !p.vis || p.x < -80 || p.x > W + 80 || p.y < -60 || p.y > H + 60) { if (el.style.display !== 'none') el.style.display = 'none'; return; }
         if (el.style.display === 'none') el.style.display = '';
-        el.style.transform = 'translate3d(' + Math.round(p.x) + 'px,' + Math.round(p.y) + 'px,0) translate(-50%,-100%)';
+        var topSafe = W <= 760 ? 104 : 118;   // высота HUD + сама подпись
+        el.style.transform = 'translate3d(' + Math.round(p.x) + 'px,' + Math.round(Math.max(topSafe, p.y)) + 'px,0) translate(-50%,-100%)';
       }
 
       /* ============================ камера и ввод ============================ */
@@ -7399,7 +7422,7 @@ html { -webkit-text-size-adjust: 100%; }
         var hfov = 2 * Math.atan(Math.tan(vfov / 2) * camera.aspect);
         // на вертикальном экране смотрим выше и ближе: остров заполняет ширину, края можно докрутить
         var portrait = camera.aspect < 0.8;
-        var R = portrait ? 9.6 : 17.2;
+        var R = portrait ? 10.6 : 17.2;
         baseDist = Math.max(R / Math.tan(hfov / 2), (R * 0.72) / Math.tan(vfov / 2));
         if (!userPitched) pitchTarget = portrait ? 0.92 : 0.62;
         camera.updateProjectionMatrix();
@@ -7417,14 +7440,30 @@ html { -webkit-text-size-adjust: 100%; }
 
       var raycaster = new THREE.Raycaster();
       var ndc = new THREE.Vector2();
+      function visibleChain(o) {
+        for (; o; o = o.parent) if (!o.visible) return false;
+        return true;
+      }
+
       function pickAt(x, y) {
         ndc.set(x / W * 2 - 1, -(y / H) * 2 + 1);
         raycaster.setFromCamera(ndc, camera);
         var subs = subProxies.filter(function (p) { return p.visible && p.parent && p.parent.visible; });
         var hs = raycaster.intersectObjects(subs, false);
         if (hs.length) return hs[0].object.userData.hit;
-        var hits = raycaster.intersectObjects(hitProxies.filter(function (p) { return p.visible; }), false);
-        if (hits.length) return hits[0].object.userData.hit;
+        // Попадание по настоящей геометрии: ближайший к камере видимый меш и его владелец.
+        // Высокие невидимые цилиндры участков перекрывали соседние здания — клик покупал не то.
+        var mh = raycaster.intersectObjects(pickRoots, true);
+        for (var i = 0; i < mh.length; i++) {
+          var obj = mh[i].object;
+          if (!obj.isMesh || obj.material === proxyMat || !visibleChain(obj)) continue;
+          var owner = obj;
+          while (owner && !owner.userData.hit) owner = owner.parent;
+          if (!owner) continue;
+          var hit = owner.userData.hit;
+          if (hit.type === 'special' && hit.id === 'boss' && !bossVisible()) continue;
+          return hit;
+        }
         // запас для пальца: ближайшая цель в радиусе ~28px
         var best = null, bd = coarse ? 30 : 0;
         targets().forEach(function (t) {
@@ -7464,7 +7503,8 @@ html { -webkit-text-size-adjust: 100%; }
           var dx = ev.clientX - dragStart.x, dy = ev.clientY - dragStart.y;
           moved += Math.abs(dx) + Math.abs(dy);
           if (moved > 5) {
-            yawTarget += dx * 0.008;
+            // остров едет за пальцем/мышью: тянешь вправо — ближняя сторона уходит вправо
+            yawTarget -= dx * 0.008;
             pitchTarget = clamp(pitchTarget + dy * 0.004, 0.32, 1.25);
             if (Math.abs(dy) > 1) userPitched = true;
             dragStart = { x: ev.clientX, y: ev.clientY };
@@ -7905,7 +7945,7 @@ html { -webkit-text-size-adjust: 100%; }
 
       function targets() {
         var arr = [];
-        var bp = toScreen(bean.position.x, bean.position.y, bean.position.z);
+        var bp = toScreen(bean.position.x, 1.75, bean.position.z);
         arr.push({ type: 'bean', id: 'bean', x: bp.x, y: bp.y, r: 60 });
         plots.forEach(function (o) {
           var p = toScreen(o.x, 1.0, o.z);
@@ -7915,6 +7955,13 @@ html { -webkit-text-size-adjust: 100%; }
           if (sp.def.id === 'boss' && !bossVisible()) return;
           var p = toScreen(sp.def.x, sp.def.h * 0.5, sp.def.y);
           arr.push({ type: 'special', id: sp.def.id, x: p.x, y: p.y, r: 40 });
+          if (sp.def.id === 'monument' && state && state.prestiges > 0) {
+            sp.inner.userData.orbs.forEach(function (o) {
+              tmpP.copy(o.position); sp.inner.localToWorld(tmpP);
+              var q = toScreen(tmpP.x, tmpP.y, tmpP.z);
+              arr.push({ type: 'special', id: 'monument', sub: o.userData.perk, x: q.x, y: q.y, r: 14 });
+            });
+          }
           if (sp.def.id === 'fountain') {
             var u = sp.inner.userData.subs;
             BOOST_SUBS.forEach(function (sub) {
@@ -7927,8 +7974,12 @@ html { -webkit-text-size-adjust: 100%; }
         return arr;
       }
 
-      function adaptQuality(dt) {
-        perf.acc += dt; perf.n++;
+      var perfLast = performance.now();
+      function adaptQuality() {
+        var nowMs = performance.now(), real = (nowMs - perfLast) / 1000;
+        perfLast = nowMs;
+        if (real > 1) return; // вкладка была скрыта — не считаем
+        perf.acc += real; perf.n++;
         if (perf.acc < 2.5) return;
         var avg = perf.acc / perf.n * 1000;
         perf.acc = 0; perf.n = 0;
@@ -7962,7 +8013,7 @@ html { -webkit-text-size-adjust: 100%; }
         renderer.info.reset();
         composer.render(dt);
         if (t - labelAt > 0.033) { labelAt = t; updateLabels(t); }
-        adaptQuality(dt);
+        adaptQuality();
       }
 
       /* Все PBR-материалы сцены (в том числе созданные прямо в моделях: фонтан, банки, жидкости)
