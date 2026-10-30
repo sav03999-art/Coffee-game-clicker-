@@ -2880,7 +2880,7 @@ html { -webkit-text-size-adjust: 100%; }
         title: 'Война с Ред Буллом',
         subtitle: 'Глава 5 · Последняя банка',
         place: 'Орбитальная верфь, 5:55',
-        objective: 'Построй цеха и начни новую рецептуру — только она даст силы одолеть Реда.',
+        objective: 'Начни новую рецептуру — только она даст силы одолеть Реда. Дальше понадобятся цеха.',
         lines: [
           { who: 'Ред', icon: '🐂', text: 'Ты думал, я буду смотреть, как ты растёшь? Я не напиток. Я эпоха.' },
           { who: 'Бариста', icon: '🧔', text: 'Эпохи заканчиваются. Обычно с банкой в руке.' },
@@ -2894,7 +2894,7 @@ html { -webkit-text-size-adjust: 100%; }
       { who: 'Ред', icon: '🐂', text: 'Ну что, кофейный мальчик. Покажем, кто здесь бодрее?' },
       { who: 'Бариста', icon: '🧔', text: 'Не слушай его. Слушай ритм. Клик — вдох, клик — выдох.' },
       { who: 'Агнесса', icon: '👩‍💼', text: 'Уязвимости! Он открывается, когда злится. Бей в них!' },
-      { who: 'Рассказчик', icon: '📜', text: 'У тебя 80 секунд. Две формы. Одна банка должна пасть.' }
+      { who: 'Рассказчик', icon: '📜', text: 'Полторы минуты, три этапа и две формы. Одна банка должна пасть.' }
     ],
     victory: [
       { who: 'Рассказчик', icon: '📜', text: 'Банка треснула. Синий бык опускается на колени.' },
@@ -3307,7 +3307,6 @@ html { -webkit-text-size-adjust: 100%; }
   function prodMult(state) {
     var m = 1 + 0.15 * ((state.boosts && state.boosts.ad) || 0);
     m *= 1 + 0.15 * state.bossWins;
-    m *= 1 + 0.1 * perkLevel(state, 'bosspower');
     m *= 1 + 0.1 * perkLevel(state, 'legacy');
 
     m *= marketingMult(state);
@@ -3381,7 +3380,7 @@ html { -webkit-text-size-adjust: 100%; }
     if (!b || !isBuildingUnlocked(state, b)) return 0;
     if (amount === 'max') amount = maxAffordable(state, id);
     amount = Math.floor(amount);
-    if (amount < 1) return 0;
+    if (!(amount >= 1)) return 0;
     var cost = buildingCost(state, id, amount);
     if (cost > state.beans + 1e-9) return 0;
     state.beans -= cost;
@@ -3401,7 +3400,7 @@ html { -webkit-text-size-adjust: 100%; }
   function buyUpgrade(state, id) {
     var u = byUpgradeId(id);
     if (!u || !upgradeReady(state, u)) return false;
-    if (state.beans < u.cost) return false;
+    if (state.beans + 1e-9 < u.cost) return false;
     state.beans -= u.cost;
     state.upgrades[id] = true;
     return true;
@@ -3437,7 +3436,7 @@ html { -webkit-text-size-adjust: 100%; }
     return Math.round(40 * Math.pow(1.6, (state.boosts && state.boosts.night) || 0));
   }
 
-  /* Цена временного буста — не меньше базовой и ~минута/полторы производства энергетиков. */
+  /* Цена временного буста — не меньше базовой и ~40/60 секунд производства энергетиков. */
   function boostCost(state, id) {
     var def = null;
     for (var i = 0; i < BOOSTS.length; i++) if (BOOSTS[i].id === id) def = BOOSTS[i];
@@ -3544,6 +3543,12 @@ html { -webkit-text-size-adjust: 100%; }
     if (!(dt > 0)) return { beans: 0, cans: 0 };
     state.playTime += dt;
     var gain = prodPerSec(state) * dt;
+    var boostLeft = state.boostTimers.prod || 0;
+    if (boostLeft > 0 && boostLeft < dt) {
+      // ×3 только на остаток буста, дальше — обычная скорость
+      var rate = prodPerSec(state);
+      gain = rate * boostLeft + (rate / 3) * (dt - boostLeft);
+    }
     state.beans += gain;
     state.totalBeans += gain;
     state.lifetimeBeans += gain;
@@ -3557,7 +3562,7 @@ html { -webkit-text-size-adjust: 100%; }
   }
 
   function doClick(state, mult) {
-    var v = clickValue(state) * (mult || 1);
+    var v = clickValue(state) * (mult > 0 ? mult : 1);
     state.beans += v;
     state.totalBeans += v;
     state.lifetimeBeans += v;
@@ -3646,7 +3651,7 @@ html { -webkit-text-size-adjust: 100%; }
     base.bossTries = Math.floor(Math.min(1e6, num(data.bossTries)));
     base.bestBossTimeLeft = Math.min(1000, num(data.bestBossTimeLeft));
     base.patents = Math.floor(Math.min(1e9, num(data.patents)));
-    base.prestiges = Math.floor(Math.min(1e6, num(data.prestiges)));
+    base.prestiges = Math.floor(Math.min(5, num(data.prestiges)));
     base.playTime = Math.min(1e9, num(data.playTime));
     var now = Date.now();
     base.started = Math.min(now + 86400000, num(data.started)) || now;
@@ -3668,7 +3673,7 @@ html { -webkit-text-size-adjust: 100%; }
     if (data.achievements && typeof data.achievements === 'object') {
       for (var a in data.achievements) {
         if (!Object.prototype.hasOwnProperty.call(data.achievements, a)) continue;
-        if (!safeKey(a)) continue;
+        if (!safeKey(a) || !ACHIEVEMENTS.some(function (x) { return x.id === a; })) continue;
         if (data.achievements[a]) base.achievements[a] = true;
       }
     }
@@ -3737,6 +3742,11 @@ html { -webkit-text-size-adjust: 100%; }
     tier = Math.min(tier, SUFFIX.length - 1);
     var scaled = n / Math.pow(1000, tier);
     var dec = scaled < 10 ? 2 : scaled < 100 ? 1 : 0;
+    if (parseFloat(scaled.toFixed(dec)) >= 1000 && tier < SUFFIX.length - 1) {
+      tier += 1;
+      scaled = n / Math.pow(1000, tier);
+      dec = 2;
+    }
     return trim(scaled.toFixed(dec)) + SUFFIX[tier];
   }
 
@@ -3745,11 +3755,13 @@ html { -webkit-text-size-adjust: 100%; }
   }
 
   function fmtInt(n) {
+    if (!isFinite(n)) return '0';
+    if (n >= 1e15) return fmt(n);
     return Math.floor(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   }
 
   function fmtTime(sec) {
-    sec = Math.floor(sec);
+    sec = isFinite(sec) && sec > 0 ? Math.floor(sec) : 0;
     var h = Math.floor(sec / 3600);
     var m = Math.floor((sec % 3600) / 60);
     var s = sec % 60;
@@ -8439,7 +8451,7 @@ html { -webkit-text-size-adjust: 100%; }
         var avail = C.ALL_UPGRADES.filter(function (u) { return !state.upgrades[u.id] && u.req(state); }).sort(function (a, b) { return a.cost - b.cost; });
         html = '<b>Лаборатория улучшений</b> <span>нажми, чтобы открыть интерфейс · доступно ' + avail.length + '</span>';
       } else if (hit.id === 'fountain') {
-        if (hit.sub === 'ad') html = '<b>Реклама на ТВ</b> <span>' + C.adCost(state) + ' 🥫 · +15% навсегда</span>';
+        if (hit.sub === 'ad') html = '<b>Реклама на ТВ</b> <span>' + C.adCost(state) + ' 🥫 · +15% до новой рецептуры</span>';
         else if (hit.sub === 'night') html = '<b>Ночная смена</b> <span>' + C.nightCost(state) + ' 🥫 · +30% энергетиков</span>';
         else {
           var bst = C.BOOSTS.filter(function (b) { return b.id === hit.sub; })[0];
@@ -8758,7 +8770,7 @@ html { -webkit-text-size-adjust: 100%; }
     });
 
     [
-      { id: 'ad', icon: '📺', name: 'Реклама на ТВ', desc: '+15% к производству навсегда' },
+      { id: 'ad', icon: '📺', name: 'Реклама на ТВ', desc: '+15% к производству до новой рецептуры' },
       { id: 'night', icon: '🌙', name: 'Ночная смена', desc: '+30% к производству энергетиков' }
     ].forEach(function (def) {
       var card = document.createElement('div');
@@ -8780,7 +8792,7 @@ html { -webkit-text-size-adjust: 100%; }
     if (!cost || state.cans < cost) { Sound.error(); return; }
     if (!C.buyBoost(state, id)) { Sound.error(); return; }
     Sound.can();
-    toast('Энергетик', id === 'prod' ? 'Производство ускорено на 45 секунд' : id === 'click' ? 'Клик усилен на 45 секунд' : 'Бонус куплен навсегда');
+    toast('Энергетик', id === 'prod' ? 'Производство ускорено на 45 секунд' : id === 'click' ? 'Клик усилен на 45 секунд' : 'Бонус действует до новой рецептуры');
     updateHud(true);
     updateBoosts();
     updateBuildings();
@@ -10556,7 +10568,7 @@ html { -webkit-text-size-adjust: 100%; }
     // механики боссов
     if (b.bossId === 'volt') {
       b.shieldIn -= dt; b.shieldT -= dt;
-      if (b.shieldIn <= 0) { b.shield = true; b.shieldT = 4; b.shieldIn = 11; setText(dom.bossArmor, 'Щит: 12% урона'); }
+      if (b.shieldIn <= 0) { b.shield = true; b.shieldT = 4; b.shieldIn = 11; setText(dom.bossArmor, 'Щит: 20% урона'); }
       if (b.shield && b.shieldT <= 0) { b.shield = false; setText(dom.bossArmor, '100% урона'); }
     }
     if (b.bossId === 'kilowatt') {
@@ -10993,7 +11005,7 @@ html { -webkit-text-size-adjust: 100%; }
     if (ui.mainMenu) { requestAnimationFrame(frame); return; }
     if (ui.tutorialOpen && now - ui.tutorialAt > 220) { ui.tutorialAt = now; renderTutorialStep(); }
     if (!(dt > 0)) dt = 0;
-    if (dt > 8 * 3600) dt = 8 * 3600;
+    if (dt > 60) dt = 60;
 
     C.tick(state, dt);
     checkStageUnlock();
@@ -11119,7 +11131,17 @@ html { -webkit-text-size-adjust: 100%; }
     });
     on(window, 'pagehide', function () { saveGame(true); });
     on(document, 'visibilitychange', function () {
-      if (document.visibilityState === 'hidden') saveGame(true);
+      if (document.visibilityState === 'hidden') { saveGame(true); return; }
+      // вкладка вернулась: долгое отсутствие считается по офлайн-правилам, короткое — обычным тиком
+      var away = (Date.now() - (state.savedAt || Date.now())) / 1000;
+      if (away >= 60) {
+        var off = computeOffline();
+        if (off) toast('Пока тебя не было', '+' + C.fmt(off.gain) + ' зёрен за ' + C.fmtTime(off.secs) + (off.cans > 0.5 ? ' · +' + C.fmt(off.cans) + ' 🥫' : ''));
+      } else if (away > 0) {
+        C.tick(state, away);
+      }
+      ui.lastFrame = performance.now();
+      updateHud(true);
     });
     on(window, 'pointerdown', function once() {
       Sound.unlock();
