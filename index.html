@@ -6219,9 +6219,12 @@ html { -webkit-text-size-adjust: 100%; }
       var pmrem = new THREE.PMREMGenerator(renderer);
       scene.environment = pmrem.fromScene(new X.RoomEnvironment(renderer), 0.04).texture;
 
-      var composer = new X.EffectComposer(renderer);
+      // Цепочка эффектов рисует в свою текстуру — сглаживание включаем в ней самой (MSAA),
+      // иначе мелкие яркие детали мерцают при движении камеры.
+      var msaaTarget = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: coarse ? 2 : 4 });
+      var composer = new X.EffectComposer(renderer, msaaTarget);
       composer.addPass(new X.RenderPass(scene, camera));
-      var bloom = new X.UnrealBloomPass(new THREE.Vector2(512, 512), 0.55, 0.55, 0.85);
+      var bloom = new X.UnrealBloomPass(new THREE.Vector2(512, 512), 0.5, 0.6, 0.92);
       composer.addPass(bloom);
       composer.addPass(new X.OutputPass());
 
@@ -6309,8 +6312,24 @@ html { -webkit-text-size-adjust: 100%; }
         stone: mat(0xcfc6b4, 0.85, 0, { map: plasterTex })
       };
       var lampMat = new THREE.MeshStandardMaterial({ color: 0xfff1c8, emissive: 0xffc070, emissiveIntensity: 0 });
-      var accentMat = new THREE.MeshStandardMaterial({ color: 0x222222, emissive: 0xffd08a, emissiveIntensity: 2.2, roughness: 0.4 });
-      var accentSoft = new THREE.MeshBasicMaterial({ color: 0xffd08a, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
+      var accentMat = new THREE.MeshStandardMaterial({ color: 0x222222, emissive: 0xffd08a, emissiveIntensity: 1.3, roughness: 0.4 });
+      var softRingTex = canvasTex(128, 128, function (c) {
+        var g = c.createRadialGradient(64, 64, 0, 64, 64, 64);
+        g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.62, 'rgba(255,255,255,0)');
+        g.addColorStop(0.8, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+        c.fillStyle = g; c.fillRect(0, 0, 128, 128);
+      });
+      var accentSoft = new THREE.MeshBasicMaterial({ color: 0xffd08a, map: softRingTex, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
+      /* Плоское мягкое кольцо на земле: не мерцает при движении камеры, в отличие от тонкого тора. */
+      function glowRing(parent, radius, material, y) {
+        var geo = new THREE.PlaneGeometry(radius * 2.5, radius * 2.5);
+        geo.rotateX(-Math.PI / 2);
+        var me = new THREE.Mesh(geo, material);
+        me.position.y = y;
+        me.renderOrder = 2;
+        parent.add(me);
+        return me;
+      }
       var ghostMat = new THREE.MeshBasicMaterial({ color: 0xffd08a, transparent: true, opacity: 0.13, depthWrite: false });
       var winMat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: true });
       var proxyMat = new THREE.MeshBasicMaterial({ visible: false });
@@ -6482,7 +6501,9 @@ html { -webkit-text-size-adjust: 100%; }
         starPos.push(280 * Math.sin(ph) * Math.cos(th), 280 * Math.cos(ph), 280 * Math.sin(ph) * Math.sin(th));
       }
       starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
-      var starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0, fog: false, depthWrite: false });
+      var starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 2.4, sizeAttenuation: false, transparent: true, opacity: 0, fog: false, depthWrite: false, map: canvasTex(16, 16, function (c) {
+        var g = c.createRadialGradient(8, 8, 0, 8, 8, 8); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(0, 0, 16, 16);
+      }) });
       scene.add(new THREE.Points(starGeo, starMat));
 
       scene.fog = new THREE.FogExp2(0x000000, 0.01);
@@ -6535,6 +6556,16 @@ html { -webkit-text-size-adjust: 100%; }
 
       /* Деревья и фонари: инстансы, чтобы было живо и дёшево. */
       var lamps = [];
+      var lampHalos = [];
+      var glowTexCache = null;
+      function glowTexture() {
+        if (!glowTexCache) glowTexCache = canvasTex(64, 64, function (c) {
+          var g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+          g.addColorStop(0, 'rgba(255,255,255,.9)'); g.addColorStop(0.3, 'rgba(255,255,255,.3)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+          c.fillStyle = g; c.fillRect(0, 0, 64, 64);
+        });
+        return glowTexCache;
+      }
       (function buildProps() {
         var spots = [];
         var tries = 0;
@@ -6571,7 +6602,7 @@ html { -webkit-text-size-adjust: 100%; }
           var lg = new THREE.Group();
           cyl(lg, 0.035, 0.05, 1.3, M.darkMetal, 0, 0, 0, 8);
           box(lg, 0.3, 0.04, 0.06, M.darkMetal, 0.1, 1.28, 0, 0.01);
-          var bulb = sph(lg, 0.07, lampMat, 0.22, 1.25, 0, 10);
+          var bulb = sph(lg, 0.09, lampMat, 0.22, 1.22, 0, 12);
           bulb.castShadow = false;
           lg.position.set(Math.cos(a) * 9.1, 0, Math.sin(a) * 9.1);
           lg.rotation.y = -a + Math.PI;
@@ -6580,6 +6611,15 @@ html { -webkit-text-size-adjust: 100%; }
         }
         world.add(allLamps);
         mergeStatic(allLamps);
+        lamps.forEach(function (lg) {
+          var tip = new THREE.Vector3(0.22, 1.22, 0);
+          lg.localToWorld(tip);
+          var halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffc070, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+          halo.position.copy(tip);
+          halo.scale.set(1.1, 1.1, 1);
+          world.add(halo);
+          lampHalos.push(halo);
+        });
       })();
 
       /* Облака вокруг и под островом. */
@@ -7111,9 +7151,7 @@ html { -webkit-text-size-adjust: 100%; }
         root.add(ghost);
         o.ghost = ghost;
         // уровень прокачки: светящееся кольцо у основания
-        var tierRing = add(root, new THREE.TorusGeometry(1.25, 0.035, 8, 64), new THREE.MeshBasicMaterial({ color: 0x7ee06a, transparent: true, opacity: 0.9 }), 0, 0.19, 0, false);
-        tierRing.rotation.x = Math.PI / 2;
-        o.tierRing = tierRing;
+        o.tierRing = glowRing(root, 1.25, new THREE.MeshBasicMaterial({ color: 0x7ee06a, map: softRingTex, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }), 0.19);
 
         // конвейер к зерну
         var belt = new THREE.Group();
@@ -7159,8 +7197,7 @@ html { -webkit-text-size-adjust: 100%; }
         var res = SPECIAL_BUILD[s.id](inner, s);
         mergeStatic(inner);
         world.add(g);
-        var halo = add(g, new THREE.TorusGeometry(1.45, 0.05, 8, 64), accentSoft, 0, 0.18, 0, false);
-        halo.rotation.x = Math.PI / 2;
+        var halo = glowRing(g, 1.5, accentSoft, 0.17);
         var proxy = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, s.h + 0.6, 12), proxyMat);
         proxy.position.set(s.x, (s.h + 0.6) / 2, s.y);
         proxy.userData.hit = { type: 'special', id: s.id };
@@ -7307,7 +7344,8 @@ html { -webkit-text-size-adjust: 100%; }
         H = Math.max(240, Math.round(rect.height));
         renderer.setSize(W, H, false);
         composer.setSize(W, H);
-        bloom.setSize(Math.round(W / 2), Math.round(H / 2));
+        // на телефонах свечение чуть грубее — экономим GPU, мерцания всё равно нет благодаря MSAA
+        bloom.setSize(Math.round(W * (coarse ? 0.7 : 1)), Math.round(H * (coarse ? 0.7 : 1)));
         camera.aspect = W / H;
         var vfov = camera.fov * Math.PI / 180;
         var hfov = 2 * Math.atan(Math.tan(vfov / 2) * camera.aspect);
@@ -7497,14 +7535,15 @@ html { -webkit-text-size-adjust: 100%; }
         starMat.opacity = L.stars * 0.9;
         M.ground.color.copy(L.grass);
         stdMats.forEach(function (m) { m.envMapIntensity = L.env; });
-        lampMat.emissiveIntensity = 0.2 + L.night * 4;
-        var dayWin = new THREE.Color(0x3a4a5c), nightWin = new THREE.Color().setRGB(2.4, 1.7, 0.95);
+        lampMat.emissiveIntensity = 0.2 + L.night * 0.7;
+        lampHalos.forEach(function (h) { h.material.opacity = L.night * 0.55; });
+        var dayWin = new THREE.Color(0x3a4a5c), nightWin = new THREE.Color().setRGB(1.0, 0.76, 0.44);
         winMat.color.copy(dayWin).lerp(nightWin, Math.min(1, L.night * 1.1));
         accentMat.emissive.copy(accentCur);
         accentSoft.color.copy(accent2Cur);
         ghostMat.color.copy(accent2Cur);
         beanGlow.material.color.copy(accentCur).lerp(new THREE.Color(0xffb060), 0.5);
-        bloom.strength = 0.45 + L.night * 0.35;
+        bloom.strength = 0.4 + L.night * 0.3;
       }
 
       /* ============================ кадр ============================ */
@@ -7529,7 +7568,7 @@ html { -webkit-text-size-adjust: 100%; }
           o.ghost.visible = unlocked && count === 0;
           o.belt.visible = built;
           o.edge.visible = !built;
-          o.edge.material.opacity = unlocked ? 0.75 : 0.25;
+          o.edge.material.opacity = unlocked ? 0.45 : 0.16;
           o.pad.material = unlocked ? M.darkConcrete : M.concrete;
           var tier = tierOf(o.id);
           o.tierRing.visible = built && tier > 0;
@@ -7586,7 +7625,7 @@ html { -webkit-text-size-adjust: 100%; }
           var unlocked = specialUnlocked(id);
           var act = unlocked && specialActionable(id);
           sp.halo.visible = act;
-          if (act) sp.halo.material.opacity = 0.35 + 0.35 * Math.sin(t * 4);
+          if (act) sp.halo.material.opacity = 0.42 + 0.14 * Math.sin(t * 1.6);
           var u = sp.inner.userData;
           if (id === 'boss') {
             sp.group.visible = unlocked;
@@ -7638,7 +7677,7 @@ html { -webkit-text-size-adjust: 100%; }
             BOOST_SUBS.forEach(function (sub) {
               var d = u.subs[sub];
               var c = sub === 'ad' ? C.adCost(state) : sub === 'night' ? C.nightCost(state) : C.boostCost(state, sub);
-              d.mat.emissiveIntensity = state.cans >= c ? 0.45 + 0.25 * Math.sin(t * 3 + c) : 0.05;
+              d.mat.emissiveIntensity = state.cans >= c ? 0.5 + 0.1 * Math.sin(t * 1.5) : 0.05;
             });
           }
         });
@@ -7742,7 +7781,7 @@ html { -webkit-text-size-adjust: 100%; }
         beanGlow.material.opacity = 0.35 + beanHeat * 0.5;
         var gs = 5.2 * (1 + beanHeat * 0.4);
         beanGlow.scale.set(gs, gs, 1);
-        beanLight.intensity = 5 + beanHeat * 10 + (lookCur ? lookCur.night * 4 : 0);
+        beanLight.intensity = 3.5 + beanHeat * 8 + (lookCur ? lookCur.night * 1.5 : 0);
         beanLight.color.copy(accentCur).lerp(new THREE.Color(0xffa860), 0.5);
         pedestalRing.rotation.z += dt * 0.3;
         var pm = world.userData.pedestal.userData.padMat;
@@ -7855,11 +7894,13 @@ html { -webkit-text-size-adjust: 100%; }
       }
 
       var lastLook = 0;
+      var frozen = false, frozenT = 0;
       function frame() {
         if (disposed) return;
         raf = requestAnimationFrame(frame);
         var dt = Math.min(0.05, clock.getDelta());
         var t = clock.elapsedTime;
+        if (frozen) { dt = 0; t = frozenT; } else frozenT = t;
         if (canvas.clientWidth && (Math.abs(canvas.clientWidth - W) > 1 || Math.abs(canvas.clientHeight - H) > 1)) resize();
         yaw += (yawTarget - yaw) * 0.1;
         pitch += (pitchTarget - pitch) * 0.1;
@@ -7882,6 +7923,8 @@ html { -webkit-text-size-adjust: 100%; }
 
       return {
         is3d: true,
+        debugYaw: function (v) { yaw = yawTarget = v; },
+        debugFreeze: function (on) { frozen = !!on; },
         stats: function () { return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, quality: perf.level }; },
         setState: function (s) { state = s; },
         setBuyAmount: function (v) { buyAmount = v; plots.forEach(function (o) { o.sig = ''; }); },
