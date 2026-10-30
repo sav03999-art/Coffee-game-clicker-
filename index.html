@@ -5380,7 +5380,7 @@ html { -webkit-text-size-adjust: 100%; }
         var dy = ev.clientY - dragStart.y;
         moved += Math.abs(dx) + Math.abs(dy);
         if (moved > 5) {
-          camTarget = clamp(camTarget + dx * 0.004, -0.55, 0.55);
+          camTarget += dx * 0.008;
           dragStart = { x: ev.clientX, y: ev.clientY };
         }
         return;
