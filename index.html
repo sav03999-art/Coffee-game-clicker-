@@ -6167,7 +6167,8 @@ html { -webkit-text-size-adjust: 100%; }
       import('three/addons/postprocessing/OutputPass.js'),
       import('three/addons/geometries/RoundedBoxGeometry.js'),
       import('three/addons/environments/RoomEnvironment.js'),
-      import('three/addons/utils/BufferGeometryUtils.js')
+      import('three/addons/utils/BufferGeometryUtils.js'),
+      import('three/addons/postprocessing/ShaderPass.js')
     ]).then(function (m) {
       return makeScene(m[0], {
         EffectComposer: m[1].EffectComposer,
@@ -6176,7 +6177,8 @@ html { -webkit-text-size-adjust: 100%; }
         OutputPass: m[4].OutputPass,
         RoundedBoxGeometry: m[5].RoundedBoxGeometry,
         RoomEnvironment: m[6].RoomEnvironment,
-        mergeGeometries: m[7].mergeGeometries
+        mergeGeometries: m[7].mergeGeometries,
+        ShaderPass: m[8].ShaderPass
       });
     });
     return loading;
@@ -6254,6 +6256,13 @@ html { -webkit-text-size-adjust: 100%; }
       var msaaTarget = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: coarse ? 2 : 4 });
       var composer = new X.EffectComposer(renderer, msaaTarget);
       composer.addPass(new X.RenderPass(scene, camera));
+      // Ограничение яркости перед свечением: зеркальный блик солнца на воде/стекле/металле
+      // мог быть в сотни раз ярче остального и раздувался bloom'ом в белое пятно.
+      composer.addPass(new X.ShaderPass({
+        uniforms: { tDiffuse: { value: null }, maxLum: { value: 2.2 } },
+        vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: 'uniform sampler2D tDiffuse; uniform float maxLum; varying vec2 vUv; void main(){ vec4 c = texture2D(tDiffuse, vUv); float l = max(max(c.r, c.g), c.b); if (l > maxLum) c.rgb *= maxLum / l; gl_FragColor = c; }'
+      }));
       var bloom = new X.UnrealBloomPass(new THREE.Vector2(512, 512), 0.5, 0.6, 0.92);
       composer.addPass(bloom);
       composer.addPass(new X.OutputPass());
@@ -6325,12 +6334,12 @@ html { -webkit-text-size-adjust: 100%; }
         metal: mat(0xb8c0c8, 0.32, 0.85),
         darkMetal: mat(0x3c4148, 0.45, 0.7),
         steel: mat(0x8a939c, 0.4, 0.75),
-        glass: mat(0x8fb6d4, 0.08, 0.9, { transparent: true, opacity: 0.82 }),
+        glass: mat(0x8fb6d4, 0.22, 0.75, { transparent: true, opacity: 0.82 }),
         roofDark: mat(0x3a3430, 0.75, 0.1),
         roofRed: mat(0x9a4430, 0.7),
         wood: mat(0x8a5a36, 0.8),
         rubber: mat(0x1d1d20, 0.95),
-        gold: mat(0xffc84a, 0.25, 1.0),
+        gold: mat(0xffc84a, 0.38, 1.0),
         white: mat(0xeeeae2, 0.6),
         red: mat(0xc8443a, 0.55),
         rock: mat(0x5a4c44, 0.95, 0, { flatShading: true }),
@@ -7033,10 +7042,10 @@ html { -webkit-text-size-adjust: 100%; }
           var basin = add(g, new THREE.TorusGeometry(1.15, 0.14, 12, 48), M.stone, 0, 0.18, 0);
           basin.rotation.x = Math.PI / 2;
           cyl(g, 1.15, 1.15, 0.12, M.stone, 0, 0, 0, 48);
-          var water = add(g, new THREE.CylinderGeometry(1.08, 1.08, 0.04, 48), new THREE.MeshStandardMaterial({ color: 0x3a8ad0, roughness: 0.05, metalness: 0.3, transparent: true, opacity: 0.85 }), 0, 0.22, 0, false);
+          var water = add(g, new THREE.CylinderGeometry(1.08, 1.08, 0.04, 48), new THREE.MeshStandardMaterial({ color: 0x3a8ad0, roughness: 0.32, metalness: 0, transparent: true, opacity: 0.85 }), 0, 0.22, 0, false);
           g.userData.water = water;
           cyl(g, 0.12, 0.2, 0.6, M.stone, 0, 0.12, 0, 16);
-          var jet = cyl(g, 0.04, 0.12, 0.7, new THREE.MeshBasicMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.6 }), 0, 0.7, 0, 12);
+          var jet = cyl(g, 0.04, 0.12, 0.7, new THREE.MeshBasicMaterial({ color: 0x8fb8d8, transparent: true, opacity: 0.45, depthWrite: false }), 0, 0.7, 0, 12);
           jet.castShadow = false;
           g.userData.jet = jet;
           // четыре банки-бусты
@@ -7044,7 +7053,7 @@ html { -webkit-text-size-adjust: 100%; }
           g.userData.subs = {};
           BOOST_SUBS.forEach(function (sub, i) {
             var a = i * Math.PI / 2 + 0.4;
-            var cm = new THREE.MeshStandardMaterial({ color: cols[sub], metalness: 0.65, roughness: 0.28, emissive: cols[sub], emissiveIntensity: 0.1 });
+            var cm = new THREE.MeshStandardMaterial({ color: cols[sub], metalness: 0.5, roughness: 0.42, emissive: cols[sub], emissiveIntensity: 0.1 });
             var can = cyl(g, 0.17, 0.17, 0.55, cm, Math.cos(a) * 0.72, 0.22, Math.sin(a) * 0.72, 22);
             cyl(g, 0.15, 0.17, 0.03, M.metal, Math.cos(a) * 0.72, 0.77, Math.sin(a) * 0.72, 22);
             g.userData.subs[sub] = { mesh: can, mat: cm, x: Math.cos(a) * 0.72, z: Math.sin(a) * 0.72, y: 0.5 };
@@ -7655,7 +7664,7 @@ html { -webkit-text-size-adjust: 100%; }
           var unlocked = specialUnlocked(id);
           var act = unlocked && specialActionable(id);
           sp.halo.visible = act;
-          if (act) sp.halo.material.opacity = 0.42 + 0.14 * Math.sin(t * 1.6);
+          if (act) sp.halo.material.opacity = 0.28 + 0.08 * Math.sin(t * 1.6);
           var u = sp.inner.userData;
           if (id === 'boss') {
             sp.group.visible = unlocked;
@@ -7707,7 +7716,7 @@ html { -webkit-text-size-adjust: 100%; }
             BOOST_SUBS.forEach(function (sub) {
               var d = u.subs[sub];
               var c = sub === 'ad' ? C.adCost(state) : sub === 'night' ? C.nightCost(state) : C.boostCost(state, sub);
-              d.mat.emissiveIntensity = state.cans >= c ? 0.5 + 0.1 * Math.sin(t * 1.5) : 0.05;
+              d.mat.emissiveIntensity = state.cans >= c ? 0.28 + 0.06 * Math.sin(t * 1.5) : 0.04;
             });
           }
         });
@@ -7946,6 +7955,13 @@ html { -webkit-text-size-adjust: 100%; }
         if (t - labelAt > 0.033) { labelAt = t; updateLabels(t); }
         adaptQuality(dt);
       }
+
+      /* Все PBR-материалы сцены (в том числе созданные прямо в моделях: фонтан, банки, жидкости)
+         получают яркость отражений по времени суток — иначе студийное окружение засвечивало их ночью. */
+      scene.traverse(function (o) {
+        var ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+        ms.forEach(function (m) { if (m.isMeshStandardMaterial && stdMats.indexOf(m) < 0) stdMats.push(m); });
+      });
 
       resize();
       updateCamera();
