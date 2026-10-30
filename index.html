@@ -2041,7 +2041,7 @@ body.panel-open .hero { right: 0 !important; transition: none; }
 .fac-card.is-locked { opacity: .45; }
 .fac-thumb { height: 58px; display: grid; place-items: center; margin-bottom: 4px; }
 .fac-thumb svg { width: 100%; height: 58px; }
-.fac-card > b { display: block; font-size: 10.5px; line-height: 1.2; text-transform: capitalize; }
+.fac-card > b { display: block; font-size: 10.5px; line-height: 1.2; }
 .fac-card > small { display: block; margin-top: 2px; font-size: 9px; color: var(--muted-2); }
 .fac-foot { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-top: 6px; }
 .fac-foot > span { font-size: 9px; color: var(--muted); }
@@ -2339,7 +2339,7 @@ html { -webkit-text-size-adjust: 100%; }
     pointer-events: none; visibility: hidden;
   }
   body[data-mview="play"] .hero {
-    height: calc(100vh - 150px); height: calc(100dvh - 150px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    height: calc(100vh - 72px); height: calc(100dvh - 72px - env(safe-area-inset-bottom, 0px));
     max-height: none; min-height: 340px;
   }
   body[data-mview] { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
@@ -2350,6 +2350,24 @@ html { -webkit-text-size-adjust: 100%; }
     font: 800 11px/17px -apple-system, "Helvetica Neue", Arial, sans-serif; font-style: normal; text-align: center;
   }
   .mbadge[hidden] { display: none; }
+
+  /* V3 скрыл панели целиком — на телефоне показываем их во вкладках, иначе вкладки пустые */
+  body[data-mview="lines"] .factory-panel,
+  body[data-mview="shop"] .shop-panel,
+  body[data-mview="path"] .path-panel {
+    display: block !important;
+    position: fixed; z-index: 30;
+    top: calc(64px + env(safe-area-inset-top, 0px));
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    left: calc(10px + env(safe-area-inset-left, 0px)); right: calc(10px + env(safe-area-inset-right, 0px));
+    overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+    align-self: stretch; justify-self: stretch;
+  }
+  body[data-mview="shop"] .shop-panel { display: flex !important; min-height: 0; }
+  body[data-mview="lines"] .factory-panel .buy-amounts { top: 0 !important; }
+  .factory-panel .b-name { white-space: normal; flex-wrap: wrap; row-gap: 3px; }
+  body[data-mview="path"] .path-track { flex-direction: column; overflow: visible; gap: 10px; }
+  body[data-mview="path"] .path-node { flex-direction: row; min-width: 0; text-align: left; gap: 12px; }
 }
 </style>
 </head>
@@ -2926,10 +2944,10 @@ html { -webkit-text-size-adjust: 100%; }
   BUILDINGS.forEach(function (b) { BUILDING_BY_ID[b.id] = b; });
 
   /* ---- 100 заводов: 10 эпох по 10 моделей ---- */
-  var ERA_NAMES = ['Утренняя', 'Стартовая', 'Энергетическая', 'Имперская', 'Орбитальная',
-    'Сиропная', 'Транспортная', 'Дизайнерская', 'Космическая', 'Легендарная'];
-  var ERA_TYPES = ['кофемолка', 'эспрессо-цех', 'фургон-цех', 'кофейня', 'обжарочный цех',
-    'завод', 'линия энергетиков', 'сиропный цех', 'логистический хаб', 'мегафабрика'];
+  var ERA_NAMES = ['Рассвет', 'Старт', 'Энергия', 'Империя', 'Орбита',
+    'Сироп', 'Транспорт', 'Дизайн', 'Космос', 'Легенда'];
+  var ERA_TYPES = ['Кофемолка', 'Эспрессо-цех', 'Фургон-цех', 'Кофейня', 'Обжарочный цех',
+    'Завод', 'Линия энергетиков', 'Сиропный цех', 'Логистический хаб', 'Мегафабрика'];
   var FACTORIES = [];
   for (var fe = 0; fe < 10; fe++) {
     for (var fi = 0; fi < 10; fi++) {
@@ -2937,7 +2955,7 @@ html { -webkit-text-size-adjust: 100%; }
         id: 'f' + fe + '_' + fi,
         era: fe,
         slot: fi,
-        name: ERA_NAMES[fe] + ' ' + ERA_TYPES[fi],
+        name: ERA_TYPES[fi] + ' «' + ERA_NAMES[fe] + '»',
         cost: Math.floor(2500 * Math.pow(7.2, fe) * Math.pow(1.85, fi)),
         bonus: 0.02,
         model: {
@@ -3882,8 +3900,9 @@ html { -webkit-text-size-adjust: 100%; }
       var fitW = (FIT * 2 + 2.4) * ISO;
       var fitH = (FIT * 2 + 2.4) * 0.5 + 4.2;
       unit = Math.min(W / fitW, H / fitH) * 0.96 * zoom;
-      if (W < 640) unit *= 1.06; else unit *= 1.03;
-      unit = Math.max(18, unit);
+      if (W < 640) unit *= 1.0; else unit *= 1.03;
+      // на узком экране не раздуваем сцену: иначе края (престиж, сюжет) уходят за экран
+      unit = Math.max(W < 640 ? 15 : 18, unit);
 
       stars = [];
       for (var i = 0; i < 46; i++) {
@@ -4500,15 +4519,6 @@ html { -webkit-text-size-adjust: 100%; }
       ctx.fillStyle = '#fff';
       ctx.fillText(C.BUILDINGS[o.index].icon, bp.x, bp.y + 5);
 
-      var label = '×' + C.fmtInt(count);
-      ctx.font = '700 9.5px "Segoe UI", system-ui, sans-serif';
-      var tw = ctx.measureText(label).width + 10;
-      ctx.fillStyle = 'rgba(9,12,7,0.82)';
-      roundedRect(bp.x - tw / 2, bp.y + r + 2, tw, 14, 6);
-      ctx.fill();
-      ctx.fillStyle = css(palCur.accent2, 0.95);
-      ctx.fillText(label, bp.x, bp.y + r + 12.5);
-
       // визуальная прокачка здания
       var upTier = 0;
       if (state && state.upgrades) {
@@ -4516,6 +4526,17 @@ html { -webkit-text-size-adjust: 100%; }
           if (Object.prototype.hasOwnProperty.call(state.upgrades, uid) && uid.indexOf('b_' + o.id + '_') === 0) upTier++;
         }
       }
+
+      var label = '×' + C.fmtInt(count);
+      ctx.font = '700 9.5px "Segoe UI", system-ui, sans-serif';
+      var tw = ctx.measureText(label).width + 10;
+      var badgeW = upTier > 0 ? 24 : 0;
+      var lx = bp.x - (tw + (badgeW ? badgeW + 3 : 0)) / 2;
+      ctx.fillStyle = 'rgba(9,12,7,0.82)';
+      roundedRect(lx, bp.y + r + 2, tw, 14, 6);
+      ctx.fill();
+      ctx.fillStyle = css(palCur.accent2, 0.95);
+      ctx.fillText(label, lx + tw / 2, bp.y + r + 12.5);
       if (upTier > 0) {
         var tcol = upTier >= 3 ? [255, 210, 80] : (upTier === 2 ? [99, 230, 208] : [126, 224, 106]);
         var tpos = project(o.x, o.y, topZ + 0.16);
@@ -4525,11 +4546,12 @@ html { -webkit-text-size-adjust: 100%; }
         aur.addColorStop(1, 'rgba(' + tcol.join(',') + ',0)');
         ctx.fillStyle = aur;
         ctx.beginPath(); ctx.ellipse(tbase.x, tbase.y, mw * unit * 1.1, mw * unit * 0.5, 0, 0, 6.283); ctx.fill();
-        // флаг уровня
+        // флаг уровня — сбоку от иконки, чтобы не перекрывать её
+        var fx = bp.x + r + 4, fy = bp.y + 6;
         ctx.strokeStyle = 'rgba(240,240,230,.85)'; ctx.lineWidth = 1.2;
-        ctx.beginPath(); ctx.moveTo(tpos.x, tpos.y); ctx.lineTo(tpos.x, tpos.y - 23); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(fx, fy - 22); ctx.stroke();
         ctx.fillStyle = 'rgb(' + tcol.join(',') + ')';
-        ctx.beginPath(); ctx.moveTo(tpos.x, tpos.y - 23); ctx.lineTo(tpos.x + 16, tpos.y - 18); ctx.lineTo(tpos.x, tpos.y - 13); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(fx, fy - 22); ctx.lineTo(fx + 14, fy - 17.5); ctx.lineTo(fx, fy - 13); ctx.closePath(); ctx.fill();
         // светящиеся окна на фасаде
         for (var wi2 = 0; wi2 < upTier + 1; wi2++) {
           var wp2 = project(o.x - mw * 0.3 + wi2 * mw * 0.3, o.y + mw * 0.51, mh * 0.42);
@@ -4548,8 +4570,8 @@ html { -webkit-text-size-adjust: 100%; }
         if (upTier >= 3) {
           for (var oi = 0; oi < 3; oi++) {
             var oa = performance.now() * 0.001 + oi * 2.1;
-            var ox = tpos.x + Math.cos(oa) * 18;
-            var oy = tpos.y - 5 + Math.sin(oa) * 7;
+            var ox = bp.x + Math.cos(oa) * (r + 8);
+            var oy = bp.y + Math.sin(oa) * 7;
             ctx.fillStyle = 'rgba(' + tcol.join(',') + ',.95)';
             ctx.beginPath(); ctx.arc(ox, oy, 2, 0, 6.283); ctx.fill();
           }
@@ -4557,11 +4579,12 @@ html { -webkit-text-size-adjust: 100%; }
         // бейдж I / II / III
         var badge = upTier >= 3 ? 'III' : (upTier === 2 ? 'II' : 'I');
         ctx.fillStyle = 'rgba(8,12,6,.78)';
-        roundedRect(tpos.x - 13, tpos.y + 8, 26, 13, 5); ctx.fill();
+        var bx2 = lx + tw + 3;
+        roundedRect(bx2, bp.y + r + 2, badgeW, 14, 5); ctx.fill();
         ctx.strokeStyle = 'rgba(' + tcol.join(',') + ',.7)'; ctx.lineWidth = 1; ctx.stroke();
         ctx.fillStyle = 'rgb(' + tcol.join(',') + ')';
         ctx.font = '800 8px "Segoe UI", system-ui, sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText(badge, tpos.x, tpos.y + 18);
+        ctx.fillText(badge, bx2 + badgeW / 2, bp.y + r + 12);
       }
       // импульс от покупки
       for (var pi = plotPulses.length - 1; pi >= 0; pi--) {
@@ -4879,19 +4902,6 @@ html { -webkit-text-size-adjust: 100%; }
             spawnSmoke(wx, s.y - 0.1, wh + 0.3, palCur.accent2);
           }
         }
-        var sign = project(s.x, s.y - 0.05, 1.65);
-        ctx.fillStyle = 'rgba(8,12,6,.88)';
-        roundedRect(sign.x - 34, sign.y - 10, 68, 18, 6);
-        ctx.fill();
-        ctx.strokeStyle = css(palCur.accent2, 0.65);
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.font = '800 9px "Segoe UI", system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = css(palCur.accent2, 0.95);
-        var wReq = state ? C.factoryRequired(state) : 20;
-        var wDen = wReq > 0 ? wReq : 100;
-        ctx.fillText('ЦЕХА ' + (state ? C.factoryCount(state) : 0) + '/' + wDen, sign.x, sign.y + 3);
         specialBadge(s, s.x, s.y, 2.35, (state ? C.factoryCount(state) : 0) + '/' + (state && C.factoryRequired(state) > 0 ? C.factoryRequired(state) : 100));
       } else if (s.id === 'trophy') {
         var tp = project(s.x, s.y, 0.6);
@@ -6282,6 +6292,8 @@ html { -webkit-text-size-adjust: 100%; }
   }
 
   function updateBoosts() {
+    setText(dom.cansBig, C.fmtInt(state.cans));
+    setText(dom.cansRate, '+' + C.fmt(C.cansPerSec(state)) + ' /с');
     for (var id in boostRefs) {
       var ref = boostRefs[id];
       if (!ref) continue;
@@ -6332,7 +6344,7 @@ html { -webkit-text-size-adjust: 100%; }
 
     var can = C.canPrestige(state);
     setText(dom.patentsBig, C.fmtInt(state.patents));
-    setText(dom.prestigeLevel, state.prestiges + ' / 5 · ' + C.currentBoss(state).name);
+    setText(dom.prestigeLevel, state.prestiges + ' / 5');
     setText(dom.hudPatents, C.fmtInt(state.patents));
     dom.patentsWrap.hidden = !(state.patents > 0 || state.prestiges > 0 || state.bossWins > 0);
 
@@ -6370,7 +6382,7 @@ html { -webkit-text-size-adjust: 100%; }
         ref.btn.textContent = 'MAX';
         ref.btn.disabled = true;
       } else {
-        ref.btn.textContent = cost + ' 🎁';
+        ref.btn.textContent = cost + ' 📜';
         ref.btn.disabled = state.patents < cost;
       }
     });
@@ -6615,7 +6627,7 @@ html { -webkit-text-size-adjust: 100%; }
     if (can) actions.unshift({ label: 'Новая рецептура · уровень ' + (state.prestiges + 1), cls: 'btn-primary', close: false, onClick: prestigeConfirm });
     openModal({
       title: 'Прокачка за бонусы боссов',
-      body: '<div class="up-top"><b>🎁 ' + patents + ' бонусов</b> · уровень престижа ' + state.prestiges + ' · босс ' + C.currentBoss(state).name + '</div>' +
+      body: '<div class="up-top"><b>📜 ' + patents + ' бонусов</b> · уровень престижа ' + state.prestiges + ' · босс ' + C.currentBoss(state).name + '</div>' +
             '<div class="up-list">' + cards + '</div>',
       actions: actions
     });
@@ -6641,7 +6653,7 @@ html { -webkit-text-size-adjust: 100%; }
       return '<div class="up-card">' +
         '<span>' + (u.icon || '🔧') + '</span>' +
         '<div class="up-copy"><b>' + u.name + '</b><small>' + u.desc + ' · ' + C.fmt(u.cost) + '</small></div>' +
-        '<button class="btn btn-primary up-buy" data-id="' + u.id + '">Купить</button>' +
+        '<button class="btn ' + (state.beans >= u.cost ? 'btn-primary' : 'btn-ghost') + ' up-buy" data-id="' + u.id + '">Купить</button>' +
       '</div>';
     }).join('') || '<p class="pane-hint">Все доступные улучшения куплены. Новые откроются по прогрессу.</p>';
     openModal({
@@ -7254,7 +7266,7 @@ html { -webkit-text-size-adjust: 100%; }
       else if (aff === best.aff && ((aff && cost > best.cost) || (!aff && cost < best.cost))) best = { b: b, cost: cost, aff: aff };
     });
     if (!best) return { text: 'Построй первую линию', ready: false };
-    return { text: (best.aff ? 'купи ' : 'копи на ') + best.b.name + ' · ' + C.fmt(best.cost), ready: best.aff };
+    return { text: (best.aff ? 'купи: ' : 'копи на: ') + best.b.name + ' · ' + C.fmt(best.cost), ready: best.aff };
   }
 
   function updateHud(force) {
@@ -7298,6 +7310,9 @@ html { -webkit-text-size-adjust: 100%; }
     setText(dom.chapterBlurb, info.stage.blurb);
     setText(dom.chapterPct, pct + '%');
     dom.chapterFill.style.width = pct + '%';
+
+    updateGoal();
+    updatePath();
 
     if (now - ui.titleAt > 1000) {
       ui.titleAt = now;
@@ -7352,9 +7367,14 @@ html { -webkit-text-size-adjust: 100%; }
       if (C.bossReady(state)) { text = 'Всё готово — вызывай босса'; fill = 100; }
       else {
         var need = [];
-        if ((state.buildings.orbital || 0) < 1) need.push('орбитальный завод');
-        if (state.cans < C.BOSS.cansCost) need.push(C.BOSS.cansCost + ' энергетиков');
-        text = 'Нужно: ' + need.join(' и ');
+        if (state.prestiges < 1) need.push('новая рецептура');
+        else if (C.bossDefeatedThisLevel(state)) need.push(state.prestiges >= 5 ? 'ничего — все боссы повержены' : 'новая рецептура');
+        else {
+          if (C.factoryCount(state) < C.factoryRequired(state)) need.push('цехов ' + C.factoryCount(state) + ' / ' + C.factoryRequired(state));
+          if ((state.buildings.orbital || 0) < 1) need.push('орбитальный завод');
+          if (state.cans < C.BOSS.cansCost) need.push(C.BOSS.cansCost + ' энергетиков');
+        }
+        text = 'Нужно: ' + (need.join(', ') || 'подготовка');
         fill = ((state.buildings.orbital || 0) >= 1 ? 50 : 0) + Math.min(50, state.cans / C.BOSS.cansCost * 50);
       }
     }
@@ -8422,6 +8442,16 @@ html { -webkit-text-size-adjust: 100%; }
       ui.achAt = now;
       checkAch();
     }
+    // панели (на телефоне — вкладки) живут без перерисовки сцены: цены и доступность меняются со временем
+    if (now - ui.shopAt > 400) {
+      ui.shopAt = now;
+      updateBuildings();
+      refreshUpgrades(false);
+      updateUpgradeAffordability();
+      updateBoosts();
+      if (ui.tab === 'prestige') updatePrestige();
+      if (ui.tab === 'awards') updateStats();
+    }
     if (now - ui.saveAt > 10000) {
       ui.saveAt = now;
       saveGame(true);
@@ -8671,7 +8701,7 @@ html { -webkit-text-size-adjust: 100%; }
   }
   function badges() {
     var a = document.querySelectorAll('.factory-panel .b-buy.is-affordable').length;
-    var s = document.querySelectorAll('.shop-panel .up-card.is-affordable').length;
+    var s = document.querySelectorAll('.shop-panel .u-card.is-affordable').length;
     [[1, a], [2, s]].forEach(function (p) {
       var el = btns[p[0]].querySelector('.mbadge');
       el.hidden = !p[1];
