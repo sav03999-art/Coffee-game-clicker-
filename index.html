@@ -7383,6 +7383,7 @@ html { -webkit-text-size-adjust: 100%; }
       var zoom = 1;
       var shift = 0, shiftTarget = 0;
       var baseDist = 40;
+      var lookTarget3 = new THREE.Vector3(0, 1.0, 0);
       var userPitched = false;
 
       function resize() {
@@ -7407,8 +7408,8 @@ html { -webkit-text-size-adjust: 100%; }
       function updateCamera() {
         var d = baseDist / zoom;
         var a = Math.PI / 4 - yaw;
-        var target = new THREE.Vector3(0, 1.0, 0);
-        camera.position.set(Math.cos(a) * Math.cos(pitch) * d, Math.sin(pitch) * d + 1.0, Math.sin(a) * Math.cos(pitch) * d);
+        var target = lookTarget3;
+        camera.position.set(target.x + Math.cos(a) * Math.cos(pitch) * d, Math.sin(pitch) * d + target.y, target.z + Math.sin(a) * Math.cos(pitch) * d);
         camera.lookAt(target);
         if (Math.abs(shift) > 0.5) camera.setViewOffset(W, H, shift, 0, W, H);
         else camera.clearViewOffset();
@@ -7979,6 +7980,7 @@ html { -webkit-text-size-adjust: 100%; }
         is3d: true,
         debugYaw: function (v) { yaw = yawTarget = v; },
         debugFreeze: function (on) { frozen = !!on; },
+        debugFocus: function (x, y, z, zm) { lookTarget3.set(x, y, z); if (zm) zoom = zm; },
         stats: function () { return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, quality: perf.level }; },
         setState: function (s) { state = s; },
         setBuyAmount: function (v) { buyAmount = v; plots.forEach(function (o) { o.sig = ''; }); },
