@@ -244,8 +244,10 @@ body.playing #gl{cursor:crosshair}
 @keyframes feedIn{0%{opacity:0;transform:translateX(20px)}8%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
 
 /* ---------- экраны смерти и финала ---------- */
-.over{position:fixed;inset:0;z-index:45;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;background:radial-gradient(ellipse at center,rgba(0,0,0,.25),rgba(0,0,0,.85));opacity:0;pointer-events:none;transition:opacity 1s}
+.over{position:fixed;inset:0;z-index:45;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;gap:10px;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:calc(20px + var(--safe-t)) calc(12px + var(--safe-r)) calc(20px + var(--safe-b)) calc(12px + var(--safe-l));background:radial-gradient(ellipse at center,rgba(0,0,0,.25),rgba(0,0,0,.85));opacity:0;pointer-events:none;transition:opacity 1s}
 .over.on{opacity:1;pointer-events:auto}
+.over>:first-child{margin-top:auto}.over>:last-child{margin-bottom:auto}
+.over .tbc{margin-top:22px;font-size:12px;letter-spacing:.4em;color:var(--acc-2)}
 .over h2{margin:0;font:200 clamp(26px,5vw,60px)/1.1 var(--f-title);letter-spacing:.4em;padding-left:.4em;color:#fff}
 .over.dead h2{color:#ffd9d4;text-shadow:0 0 40px rgba(255,60,40,.5)}
 .over p{margin:6px 0 0;max-width:620px;padding:0 24px;font:300 15px/1.6 var(--f-ui);color:rgba(230,247,255,.78)}
@@ -288,6 +290,17 @@ body.touch #stickzone,body.touch #stick{display:none}
   #radio{width:min(440px,60vw);top:calc(14px + var(--safe-t))} #radio .r-text{font-size:13px}
   #tgt{width:170px} #tgt .t-n{font-size:14px}
   .stats{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-height:540px){
+  .over{gap:6px}
+  .over h2{font-size:clamp(20px,4vw,34px)}
+  .over p{font-size:13px;line-height:1.45;margin-top:0}
+  .over .tbc{margin-top:8px;font-size:10px}
+  .stats{margin-top:10px}
+  .stats div{padding:9px 6px}
+  .stats b{font-size:18px;margin-top:5px}
+  .over .btns{margin-top:12px}
+  .over .btn{padding:11px 14px}
 }
 @media (max-height:500px){
   #obj{top:calc(10px + var(--safe-t))} #obj li{font-size:11.5px} #obj .o-t{font-size:14px;margin:6px 0}
@@ -428,7 +441,7 @@ body.touch #stickzone,body.touch #stick{display:none}
   <h2>ТИХАЯ ГАВАНЬ</h2>
   <p>Самописец передан службе безопасности. Маршрут «Тихой гавани» знали только на «Гелиосе». Кто-то на станции работает на «Жнецов»…</p>
   <div class="stats" id="end-stats"></div>
-  <p style="margin-top:22px;font-size:12px;letter-spacing:.4em;color:var(--acc-2)">ПРОДОЛЖЕНИЕ СЛЕДУЕТ</p>
+  <p class="tbc">ПРОДОЛЖЕНИЕ СЛЕДУЕТ</p>
   <div class="btns"><button class="btn primary" id="e-free">Свободный полёт</button><button class="btn" id="e-menu">Главное меню</button></div>
 </div>
 
@@ -3143,6 +3156,7 @@ function startMission(i, fromCheckpoint = true) {
   Radio.clear(); UI.prompt(null); Bolts.clear(); Missiles.clear(); clearEnemies(); G.lowWarned = false;
   if (fromCheckpoint) M.spawn();
   M.start();
+  G.cpStats = Object.assign({}, G.stats);
   save.mission = i; saveJSON(SAVE_KEY, save);
   enterPlay();
 }
@@ -3153,6 +3167,13 @@ function nextMission() {
   save.mission = i; saveJSON(SAVE_KEY, save);
   P.hp = Math.max(P.hp, 60); P.missiles = 4;
   M.start();
+  G.cpStats = Object.assign({}, G.stats);
+}
+/* перезапуск с контрольной точки: статистика неудачной попытки не идёт в зачёт (кроме общего времени) */
+function restartCheckpoint() {
+  if (G.mode === 'free') { startFree(); return; }
+  if (G.cpStats) G.stats = Object.assign({}, G.cpStats, { time: G.stats.time });
+  startMission(G.mission, true);
 }
 function startFree() {
   if (M && M.end) M.end();
@@ -3193,7 +3214,7 @@ function updateDying(rdt) {
 }
 function retry() {
   $('dead').classList.remove('on');
-  fadeTo(() => { if (G.mode === 'free') startFree(); else startMission(G.mission, true); });
+  fadeTo(restartCheckpoint);
 }
 
 /* ---------- стыковка (финал эпизода) ---------- */
@@ -3386,7 +3407,7 @@ function bindUI() {
   $('p-resume').addEventListener('click', () => { Sound.ui('confirm'); resumeGame(); });
   $('p-settings').addEventListener('click', () => { $('pause').classList.remove('on'); openSheetId('settings'); });
   $('p-controls').addEventListener('click', () => { $('pause').classList.remove('on'); openSheetId('controls'); });
-  $('p-restart').addEventListener('click', () => { $('pause').classList.remove('on'); fadeTo(() => { if (G.mode === 'free') startFree(); else startMission(G.mission, true); }); });
+  $('p-restart').addEventListener('click', () => { $('pause').classList.remove('on'); fadeTo(restartCheckpoint); });
   $('p-menu').addEventListener('click', () => { $('pause').classList.remove('on'); fadeTo(showMenu); });
   $('d-retry').addEventListener('click', () => { Sound.ui('confirm'); retry(); });
   $('d-menu').addEventListener('click', () => { $('dead').classList.remove('on'); fadeTo(showMenu); });
